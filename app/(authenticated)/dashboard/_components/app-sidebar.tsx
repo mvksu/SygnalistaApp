@@ -1,6 +1,6 @@
 "use client"
 
-import { Link, Settings2, User, Users } from "lucide-react"
+import { Link, Settings2 } from "lucide-react"
 import * as React from "react"
 
 import {
@@ -10,9 +10,9 @@ import {
   SidebarHeader,
   SidebarRail
 } from "@/components/ui/sidebar"
+import { OrganizationSwitcher } from "@clerk/nextjs"
 import { NavMain } from "../_components/nav-main"
 import { NavUser } from "../_components/nav-user"
-import { TeamSwitcher } from "../_components/team-switcher"
 
 export function AppSidebar({
   userData,
@@ -27,28 +27,6 @@ export function AppSidebar({
 }) {
   const data = {
     user: userData,
-    teams: [
-      {
-        name: "Personal",
-        logo: User,
-        plan: "Account"
-      },
-      {
-        name: "Team 1",
-        logo: Users,
-        plan: "Team"
-      },
-      {
-        name: "Team 2",
-        logo: Users,
-        plan: "Team"
-      },
-      {
-        name: "Team 3",
-        logo: Users,
-        plan: "Team"
-      }
-    ],
     navMain: [
       {
         title: "Nav Item 1",
@@ -89,10 +67,22 @@ export function AppSidebar({
       }
     ]
   }
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <TeamSwitcher teams={data.teams} />
+        <OrganizationSwitcher
+          hidePersonal
+          afterCreateOrganizationUrl="/dashboard"
+          afterLeaveOrganizationUrl="/"
+          appearance={{
+            elements: {
+              organizationSwitcherTrigger: "w-full justify-start",
+              organizationPreviewTextContainer: "truncate",
+              organizationSwitcherTriggerIcon: "ml-auto"
+            }
+          }}
+        />
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />

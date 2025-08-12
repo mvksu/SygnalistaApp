@@ -1,0 +1,268 @@
+Overview
+This product is a multi-tenant SaaS platform that enables organizations in Poland/EU to collect, manage, and evidence whistleblowing reports in a way that is confidential, secure, and compliant. It solves three core problems: (1) providing safe, anonymous (optional) intake, (2) enabling two-way communication and timely handling, and (3) generating an auditable register and evidence that statutory deadlines were met (acknowledgement within 7 days and feedback within 3 months). It targets employers with ≥50 employees (and certain regulated sectors regardless of size), plus public entities, who must operate internal reporting channels. The value is reduced legal/reputation risk and faster, traceable resolution of issues. 
+ 
+ 
+
+Core Features
+1) Secure Intake Portal (anonymous-friendly)
+
+What it does: Public web form to submit a report (text + attachments), optionally anonymous, generates a receipt code and passphrase for a private “secure inbox.”
+
+Why it’s important: Polish law allows accepting anonymous reports; anonymity can increase reporting. Channels must protect confidentiality (RODO). 
+ 
+
+How it works: Server-side field encryption before persistence; CAPTCHA + rate limiting; AV scanning of files. Reporter gets a one-time receipt code + passphrase to access the secure thread later. 
+
+2) Two-Way Secure Inbox
+
+What it does: Threaded messaging between reporter and handlers; supports attachments; reporter stays anonymous unless they choose to disclose.
+
+Why it’s important: Law expects two-way feedback—even for anonymous reporters—to provide updates and request clarifications. 
+
+How it works: Reporter unlocks thread using receipt code + passphrase. Handlers reply from the back-office; email/SMS notifications are optional and only if the reporter provided contact.
+
+3) SLA Timers & Reminders (7 days / 3 months)
+
+What it does: Tracks statutory deadlines; nudges handlers; blocks closure without proper events recorded.
+
+Why it’s important: Acknowledgement due within 7 days; feedback due within 3 months. Must prove compliance. 
+
+How it works: Background scheduler maintains ack_due / feedback_due; sends reminders and records actual timestamps for evidence.
+
+4) Case Register & Audit Log
+
+What it does: A tamper-evident list of all cases, outcomes, and actions; export to CSV/PDF; monthly signed snapshots.
+
+Why it’s important: Employers must maintain a register of internal reports and how they were handled. Auditable evidence reduces risk. 
+
+How it works: Append-only audit trail; hashed monthly exports stored and checksummed.
+
+5) Org Administration & Policy Pack
+
+What it does: Org setup (roles, categories, retention, locales), templates for procedures and RODO notices; toggles for anonymous intake.
+
+Why it’s important: Internal procedures and documentation are mandatory; software should operationalize them. 
+ 
+
+How it works: Admin UI to configure settings; provides downloadable templates aligned to ISO 37002 good practice. 
+
+6) Payments & Multi-Tenancy
+
+What it does: Stripe subscriptions per organization; feature gates by plan; Clerk Organizations for identity and roles.
+
+Why it’s important: Simple SaaS rollout, scalability, and cost alignment with org size.
+
+How it works: Stripe checkout → webhook to activate plan; feature gates enforced at API and UI.
+
+Future (non-MVP) highlights: oral channel via audio uploads; TOR-friendly landing; optional on-prem; path to PCBC certification / ISO 37002 alignment reinforcement. 
+ 
+ 
+
+User Experience
+Personas
+
+Reporter (Anonymous/Pseudonymous): Wants safe, simple reporting with proof of submission and updates without exposing identity.
+
+Case Handler: Needs triage, SLA views, action logging, and quick, guided responses; zero chance to reveal reporter identity inadvertently.
+
+Org Admin: Needs quick setup, documentation templates, roles, data retention, and exportable evidence packs.
+
+Auditor/Legal: Needs read-only access to register, audit log, and verifiable exports for inspections/certification.
+
+Key Flows
+
+Submit Report: Open org portal → complete form → upload attachments → submit → receive receipt code + passphrase → view secure inbox. (Works without cookies or account.) 
+
+Continue Conversation: Enter code + passphrase → read updates → reply/attach files → optional email notice if contact provided.
+
+Case Handling: New case appears with SLA badges → acknowledge → request details via inbox → record actions → provide feedback before deadline → close with outcome. 
+
+Compliance Evidence: Register view + exports (CSV/PDF) + monthly snapshots + complete audit trail. 
+
+UI/UX Considerations
+
+Minimize PII by default; clearly label optional contact fields. 
+
+Strong emphasis on clarity and trust: receipt reveal animation; obvious SLA chips; status timeline.
+
+Accessibility (WCAG 2.2 AA), multilingual support, and low-friction intake (no account required).
+
+“No-leak UI”: handler identities hidden from the reporter; anonymize metadata. 
+
+Technical Architecture
+System Components
+
+Frontend: Next.js 15 (App Router), React 19, TypeScript, Tailwind v4, shadcn/ui, Framer Motion.
+
+Auth & Orgs: Clerk (Organizations, SSO), role-based access control in app.
+
+API: Next.js Route Handlers (/api/*) + server actions; zod validation; multi-tenant middleware (subdomain or org slug).
+
+DB: PostgreSQL (Drizzle ORM), dev via Supabase.
+
+Storage: S3-compatible (R2/S3); AV scan on upload. 
+
+Background: Scheduled jobs for SLA timers/snapshots (Vercel Cron or external scheduler).
+
+Payments: Stripe subscriptions + webhooks.
+
+Email/SMS: Transactional provider (e.g., Resend; SMS optional later).
+
+Security: Field-level encryption (AES-GCM) for sensitive text; envelope keys per org; 2FA for handlers; CAPTCHA; anti-brute-force. On-premise deploy option later. 
+
+Data Models (high level)
+
+organizations: id, name, slug, plan, retention_days, locale, stripe_customer_id.
+
+users: id, clerk_id, email, name.
+
+org_members: org_id, user_id, role (ADMIN|HANDLER|AUDITOR).
+
+report_categories: org_id, name, description.
+
+reports: id, org_id, category_id, status, created_at, acknowledged_at, feedback_due_at, reporter_mode (ANON|IDENTIFIED), reporter_contact_encrypted?, receipt_code, passphrase_hash.
+
+report_messages: id, report_id, sender (REPORTER|HANDLER), body_encrypted, created_at.
+
+attachments: id, report_id/message_id, storage_key, filename, size, content_hash, av_status.
+
+actions_followup: id, report_id, type, notes_encrypted, performed_at.
+
+sla_events: id, report_id, type (ACK_DUE|FEEDBACK_DUE), due_at, sent_at, status.
+
+audit_log: id, org_id, actor_id?, action, target_type, target_id, ip_hash, ua_hash, created_at (append-only).
+
+exports: id, org_id, period, type (REGISTER|AUDIT), checksum, storage_key.
+
+APIs & Integrations
+
+Reports:
+
+POST /api/reports (create report; returns receipt + passphrase)
+
+POST /api/reports/:id/messages (add message)
+
+POST /api/reports/:id/acknowledge (handler action)
+
+POST /api/reports/:id/feedback (handler action)
+
+GET /api/reports/:id (handler view)
+
+Public Inbox:
+
+POST /api/inbox/:receipt/auth (unlock with passphrase)
+
+GET /api/inbox/:receipt (thread view for reporter)
+
+POST /api/inbox/:receipt/messages (reporter message)
+
+Files: POST /api/files/upload (presigned), POST /api/files/scan-callback (AV result)
+
+Register & Exports: GET /api/register, POST /api/register/export
+
+Stripe: POST /api/stripe/webhook (checkout, subscription update/cancel)
+
+Clerk: client-side SSO; optional webhooks for org membership changes
+
+Email: POST /api/notify used by jobs to send ack/feedback templates
+
+Infrastructure Requirements
+
+Hosting for Next.js (e.g., Vercel), Postgres (managed), object storage (R2/S3).
+
+Scheduled jobs (Vercel Cron/Cloud scheduler).
+
+Secrets management; KMS for org envelope keys.
+
+Data residency in EU; DPA with sub-processors; readiness for on-prem option (future). 
+
+Development Roadmap
+MVP (Foundational, usable end-to-end)
+
+Tenanting & Auth: Clerk Orgs; RBAC; org slug routing.
+
+DB schemas + migrations (Drizzle).
+
+Intake portal: form, attachments, CAPTCHA, encryption, create report, show receipt+passphrase.
+
+Secure inbox: unlock, view thread, post messages, attach files.
+
+Back-office: case list, filters, case view (thread, actions, status), acknowledge/feedback actions.
+
+SLA engine: due-date computation, reminders, banners, event stamps (7-day/3-month). 
+
+Register & exports: CSV/PDF, monthly snapshot with checksum; audit log viewer. 
+
+Org settings: categories, retention, anonymous toggle, email templates, policy pack download. 
+
+Payments: Stripe checkout + webhooks; plan gates.
+
+Future Enhancements
+
+Oral channel (audio uploads; optional voice modulation); hotline intake import. 
+
+TOR-friendly landing, metadata minimization modes.
+
+SAML/SCIM for large orgs; org-level key rotation UI.
+
+Advanced analytics; cross-org benchmarking (privacy-preserving).
+
+On-premise deployment profile; certification readiness kit (PCBC/ISO 37002). 
+
+Logical Dependency Chain
+Foundation first
+
+Auth + multi-tenancy → 2) DB schema & encryption utilities → 3) Intake form (public) → 4) Secure inbox → 5) Back-office case view → 6) SLA engine → 7) Register + audit → 8) Exports → 9) Org settings → 10) Billing.
+Fastest path to “visible, working”
+
+Ship intake + secure inbox as soon as encryption & storage are ready; handlers can view raw cases read-only, then layer actions/SLA.
+Atomic, extensible slices
+
+Each slice (intake, inbox, SLA, register, exports) is shippable and improves independently, without schema churn.
+
+Risks and Mitigations
+Technical
+
+PII leakage/metadata correlation: Default to IP/UA hashing or suppression for anonymous flows; tighten CSP; AV scanning; 2FA. 
+ 
+
+Crypto/key management complexity: Envelope keys per org; rotate with migration scripts; document break-glass with org approval only.
+
+Deadlines not evidenced (not just notified): Store timestamps for ack/feedback and audit entries; exports include SLA fields. 
+
+Register integrity: Append-only audit, monthly hashed snapshots, checksum verification. 
+
+Figuring out MVP
+
+Assumption that web intake is enough: MVP focuses on web + secure inbox; plan oral/email import as next step to meet multi-channel expectations. 
+
+Anonymous toggle off by default: In PL, acceptance of anonymous reports is permitted and often expected—keep it on by default. 
+
+Resource Constraints
+
+Background jobs & PDFs: Start with cron-based jobs and simple server-side PDF; swap in queues/renderers later.
+
+Certifications: ISO/PCBC not required to launch; align processes now to ease later audits. 
+
+Appendix
+Research Findings (legal/compliance hooks for design)
+
+7-day acknowledgement and 3-month feedback windows are required and must be provable. 
+
+Anonymous reporting is allowed by Polish law (not mandatory to accept, but recommended; improves intake). 
+
+Employers must keep an internal register and documentation of actions taken. 
+
+Multi-channel access (web + oral) is common practice to satisfy availability requirements. 
+
+ISO 37002 provides good-practice guidance for roles, policies, and workflow; PCBC (2025) offers certification pathways useful for enterprise buyers. 
+ 
+
+Technical Specifications (stack binding)
+
+Stack: Next.js 15 + React 19 + TS + Tailwind v4 + shadcn/ui + Framer Motion; Clerk for auth; Postgres via Drizzle (Supabase dev), Stripe for billing.
+
+Security defaults: AES-GCM field encryption, org envelope keys, S3-compatible encrypted storage, AV scanning, strict CSP/headers, 2FA, least-privilege roles. 
+
+Data retention: Org-configurable; exports and snapshots designed for audits. 
+

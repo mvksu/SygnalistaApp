@@ -8,6 +8,27 @@
       "when": 1750112706924,
       "tag": "0000_flaky_vindicator",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1755023431660,
+      "tag": "0001_demonic_venus",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1755025318846,
+      "tag": "0002_gorgeous_xavin",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1755025652168,
+      "tag": "0003_glorious_arachne",
+      "breakpoints": true
     }
   ]
 }
