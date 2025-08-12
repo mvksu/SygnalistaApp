@@ -2,7 +2,7 @@ import {
   manageSubscriptionStatusChange,
   updateStripeCustomer
 } from "@/actions/stripe"
-import { stripe } from "@/lib/stripe"
+import { stripe } from "@/lib/stripe"   
 import { headers } from "next/headers"
 import Stripe from "stripe"
 
