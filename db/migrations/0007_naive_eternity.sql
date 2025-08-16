@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "reporting_channels_org_type_idx" ON "reporting_channels" USING btree ("org_id","type");

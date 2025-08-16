@@ -13,40 +13,40 @@ import { SectionWrapper } from "./section-wrapper"
 
 const features = [
   {
-    name: "Authentication Ready",
+    name: "Secure Intake Portal",
     description:
-      "Clerk authentication pre-configured with protected routes, user management, and session handling.",
+      "Public web form with attachments and CAPTCHA. Anonymous-friendly by default.",
     icon: Shield
   },
   {
-    name: "Payments Integration",
+    name: "Two-Way Secure Inbox",
     description:
-      "Stripe integration with webhook support, subscription management, and checkout flows.",
-    icon: CreditCard
-  },
-  {
-    name: "Database Setup",
-    description:
-      "PostgreSQL with Drizzle ORM configured and ready. Includes migrations and type-safe queries.",
+      "Threaded messaging with attachments. Reporters unlock with receipt + passphrase.",
     icon: Database
   },
   {
-    name: "Modern UI Components",
+    name: "SLA Timers & Reminders",
     description:
-      "Beautiful, accessible components with shadcn/ui. Dark mode support and Tailwind CSS v4.",
-    icon: Palette
+      "Tracks 7-day acknowledgement and 3-month feedback deadlines with banners.",
+    icon: BarChart
   },
   {
-    name: "TypeScript First",
+    name: "Register & Audit Log",
     description:
-      "Full TypeScript support with strict mode, path aliases, and type safety throughout.",
+      "Tamper-evident list of cases and actions with monthly snapshots and checksums.",
     icon: Code2
   },
   {
-    name: "Analytics Built-in",
+    name: "Org Settings & Policy Pack",
     description:
-      "PostHog analytics integration for tracking user behavior and product metrics.",
-    icon: BarChart
+      "Configure categories, retention, anonymous toggle and download policy templates.",
+    icon: Palette
+  },
+  {
+    name: "Payments & Multi-Tenancy",
+    description:
+      "Clerk Organizations for roles; Stripe subscriptions with plan-based feature gates.",
+    icon: CreditCard
   }
 ]
 
@@ -74,7 +74,7 @@ export function FeaturesSection() {
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: 0.1 }}
           >
-            Start with a complete foundation
+            Build trust with a compliant channel
           </motion.p>
           <motion.p
             className="text-muted-foreground mt-6 text-lg leading-8"
@@ -83,8 +83,8 @@ export function FeaturesSection() {
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
-            No more setup headaches. Clone the repo and start building your
-            product immediately.
+            Designed around Polish/EU requirements for internal reporting — encryption,
+            deadlines, and evidence by default.
           </motion.p>
         </div>
 

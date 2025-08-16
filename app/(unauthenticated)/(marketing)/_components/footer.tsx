@@ -57,10 +57,10 @@ export function Footer() {
         <div className="xl:grid xl:grid-cols-3 xl:gap-8">
           <div className="space-y-8">
             <Link href="/" className="text-xl font-bold">
-              Company
+              Signalista
             </Link>
             <p className="text-muted-foreground text-sm leading-6">
-              Your company description here.
+              Leading the way in digital communication.
             </p>
             <div className="flex space-x-6">
               {socialLinks.map(item => (
@@ -152,7 +152,7 @@ export function Footer() {
         </div>
         <div className="border-border mt-16 border-t pt-8 sm:mt-20 lg:mt-24">
           <p className="text-muted-foreground text-xs leading-5">
-            &copy; {new Date().getFullYear()} Company, Inc. All rights reserved.
+            &copy; {new Date().getFullYear()} Signalista, Inc. All rights reserved.
           </p>
         </div>
       </div>

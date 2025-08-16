@@ -135,7 +135,7 @@
   - **Step Dependencies**: Steps 7–13
   - **User Instructions**: None.
 
-- [ ] Step 15: Create report API + receipt generation
+- [x] Step 15: Create report API + receipt generation
   - **Task**: Implement `POST /api/reports` to create report, encrypt sensitive fields, compute due dates, generate `receipt_code` & `passphrase`.
   - **Files**:
     - `app/api/reports/route.ts`
@@ -144,7 +144,7 @@
   - **Step Dependencies**: Step 10, Step 14
   - **User Instructions**: None.
 
-- [ ] Step 16: Receipt modal + printable view
+- [x] Step 16: Receipt modal + printable view
   - **Task**: After submission, show one-time modal (receipt + passphrase) with option to print/save securely.
   - **Files**:
     - `components/report/receipt-modal.tsx`
@@ -152,7 +152,7 @@
   - **Step Dependencies**: Step 15
   - **User Instructions**: None.
 
-- [ ] Step 17: Reporter secure inbox (unlock + thread)
+- [x] Step 17: Reporter secure inbox (unlock + thread)
   - **Task**: Build `/r/[receipt]` page; unlock with passphrase; fetch thread; post messages & attachments.
   - **Files**:
     - `app/(public)/r/[receipt]/page.tsx`
@@ -163,7 +163,7 @@
   - **User Instructions**: None.
 
 ## Back-Office (Handlers & Admins)
-- [ ] Step 18: App shell & navigation for dashboard
+- [x] Step 18: App shell & navigation for dashboard
   - **Task**: Create `(app)` layout with sidebar/topbar; org switch; role-aware nav.
   - **Files**:
     - `app/(app)/layout.tsx`
@@ -172,7 +172,7 @@
   - **Step Dependencies**: Step 3–4
   - **User Instructions**: None.
 
-- [ ] Step 19: Case list with filters & SLA badges
+- [x] Step 19: Case list with filters & SLA badges
   - **Task**: Implement `/dashboard/cases` grid/filter; show ack/feedback due chips.
   - **Files**:
     - `app/(app)/dashboard/cases/page.tsx`
@@ -193,7 +193,7 @@
   - **User Instructions**: None.
 
 ## SLA Engine & Notifications
-- [ ] Step 21: SLA scheduler endpoint
+- [x] Step 21: SLA scheduler endpoint
   - **Task**: Add `/api/cron/sla` to compute/mark due events and queue notifications; secure with header token.
   - **Files**:
     - `app/api/cron/sla/route.ts`
@@ -201,17 +201,17 @@
   - **Step Dependencies**: Step 9, Step 20
   - **User Instructions**: Configure Vercel (or cron) to call hourly with `CRON_SECRET`.
 
-- [ ] Step 22: Email notifications (ack/feedback)
+<!-- - [ ] Step 22: Email notifications (ack/feedback)
   - **Task**: Add Resend mailer with templates; only send if reporter provided contact.
   - **Files**:
     - `src/server/notify/mailer.ts`
     - `src/server/notify/templates/acknowledge.tsx`
     - `src/server/notify/templates/feedback.tsx`
   - **Step Dependencies**: Step 21
-  - **User Instructions**: Set `RESEND_API_KEY` (or other provider); verify domain/sender.
+  - **User Instructions**: Set `RESEND_API_KEY` (or other provider); verify domain/sender. -->
 
 ## Register, Exports, and Audit
-- [ ] Step 23: Register view + filters
+- [x] Step 23: Register view + filters
   - **Task**: Implement `/dashboard/register` listing required columns, filters, and status.
   - **Files**:
     - `app/(app)/dashboard/register/page.tsx`
@@ -219,7 +219,7 @@
   - **Step Dependencies**: Step 19–20
   - **User Instructions**: None.
 
-- [ ] Step 24: CSV/PDF export + monthly snapshot
+- [x] Step 24: CSV/PDF export + monthly snapshot
   - **Task**: Export current filtered register to CSV/PDF; scheduled monthly snapshot with checksum recorded in `exports`.
   - **Files**:
     - `app/api/register/export/route.ts`
@@ -247,24 +247,24 @@
   - **User Instructions**: Edit templates to your jurisdictional flavor before production.
 
 ## Billing (Stripe)
-- [ ] Step 27: Plan gating and Stripe checkout
+<!-- - [ ] Step 27: Plan gating and Stripe checkout
   - **Task**: Add plans (Basic/Pro/Business), checkout page, server verification of entitlements.
   - **Files**:
     - `app/(app)/billing/page.tsx`
     - `src/server/billing/plans.ts`
     - `app/api/billing/checkout/route.ts`
   - **Step Dependencies**: Step 6, Step 18
-  - **User Instructions**: Set `STRIPE_PRICE_*` envs; create products/prices in Stripe.
+  - **User Instructions**: Set `STRIPE_PRICE_*` envs; create products/prices in Stripe. -->
 
-- [ ] Step 28: Stripe webhooks & lifecycle
+<!-- - [ ] Step 28: Stripe webhooks & lifecycle
   - **Task**: Handle `checkout.session.completed`, `customer.subscription.updated|deleted`; update `organizations.plan` and feature gates.
   - **Files**:
     - `app/api/stripe/webhook/route.ts`
     - `src/server/billing/webhooks.ts`
   - **Step Dependencies**: Step 27
-  - **User Instructions**: `stripe listen --forward-to localhost:3000/api/stripe/webhook` in dev; set webhook secret in env.
+  - **User Instructions**: `stripe listen --forward-to localhost:3000/api/stripe/webhook` in dev; set webhook secret in env. -->
 
-## Security Hardening & Compliance Features
+<!-- ## Security Hardening & Compliance Features
 - [ ] Step 29: Security headers, CSP, and 2FA enforcement
   - **Task**: Add strict CSP, HSTS, referrer policy; enforce 2FA for handler roles via Clerk.
   - **Files**:
@@ -272,7 +272,7 @@
     - `src/lib/security.ts`: CSP utility
     - `components/auth/2fa-gate.tsx`
   - **Step Dependencies**: Step 3–4
-  - **User Instructions**: Enable MFA in Clerk dashboard; require for org roles.
+  - **User Instructions**: Enable MFA in Clerk dashboard; require for org roles. -->
 
 - [ ] Step 30: Platform admin read-isolation
   - **Task**: Ensure no platform administrator can read case contents; add break-glass path that logs explicit consent.
@@ -283,7 +283,7 @@
   - **User Instructions**: Limit DB access in prod; review DPA with sub-processors.
 
 ## Internationalization & UX polish
-- [ ] Step 31: i18n scaffolding (en/pl)
+- [x] Step 31: i18n scaffolding (en/pl)
   - **Task**: Minimal i18n for public intake and system notices.
   - **Files**:
     - `src/i18n/config.ts`
@@ -302,16 +302,17 @@
   - **User Instructions**: Use Lighthouse/AXE to verify WCAG 2.2 AA.
 
 ## Testing Strategy
-- [ ] Step 33: Unit tests (Vitest) for utils
+- [x] Step 33: Unit tests (Vitest) for utils
   - **Task**: Tests for crypto, ids, validation.
   - **Files**:
     - `vitest.config.ts`
-    - `src/lib/crypto/encryption.test.ts`
-    - `src/lib/validation/report.test.ts`
+    - `lib/crypto/encryption.test.ts`
+    - `lib/validation/report.test.ts`
+    - `lib/ids.test.ts`
   - **Step Dependencies**: Steps 10, 14
   - **User Instructions**: `npm i -D vitest @testing-library/react @testing-library/jest-dom`.
 
-- [ ] Step 34: Integration tests for API routes
+- [x] Step 34: Integration tests for API routes
   - **Task**: Spin up test DB; test report creation, inbox auth, message post; mock Clerk.
   - **Files**:
     - `tests/api/reports.spec.ts`

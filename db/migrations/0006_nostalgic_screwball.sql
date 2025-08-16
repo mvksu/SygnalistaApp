@@ -1,0 +1,1 @@
+ALTER TABLE "report_categories" ADD COLUMN "active" boolean DEFAULT true NOT NULL;

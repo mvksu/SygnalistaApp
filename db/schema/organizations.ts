@@ -16,6 +16,7 @@ export const organizations = pgTable("organizations", {
   plan: plan("plan").default("free").notNull(),
   retentionDays: integer("retention_days").default(365).notNull(),
   locale: text("locale").default("pl-PL").notNull(),
+  logoUrl: text("logo_url"),
   stripeCustomerId: text("stripe_customer_id").unique(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull()

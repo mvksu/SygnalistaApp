@@ -6,6 +6,7 @@ import { HeroSection } from "./_components/sections/hero-section"
 import { PricingSection } from "./_components/sections/pricing-section"
 import { SocialProofSection } from "./_components/sections/social-proof-section"
 import { VideoSection } from "./_components/sections/video-section"
+import { InsightsSection } from "./_components/sections/insights-section"
 
 export default function MarketingPage() {
   return (
@@ -13,6 +14,7 @@ export default function MarketingPage() {
       <HeroSection />
       <CompaniesSection />
       <VideoSection />
+      <InsightsSection />
       <FeaturesSection />
       <SocialProofSection />
       <PricingSection />

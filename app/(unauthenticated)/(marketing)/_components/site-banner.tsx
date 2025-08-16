@@ -26,10 +26,10 @@ export function SiteBanner() {
             <div className="relative flex items-center justify-center py-3">
               <div className="flex items-center gap-3">
                 <Link
-                  href="https://github.com/mckaywrigley/mckays-app-template"
+                  href="/pricing"
                   className="inline-flex items-center text-sm font-semibold underline-offset-2 hover:underline"
                 >
-                  <span className="mr-1">🎉</span> Template V2 is live!{" "}
+                  <span className="mr-1">🎉</span> Test your demo app{" "}
                   <ArrowRight className="ml-1 h-3.5 w-3.5" />
                 </Link>
               </div>

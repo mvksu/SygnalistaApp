@@ -1,0 +1,2 @@
+CREATE TYPE "public"."reporting_channel_type" AS ENUM('links', 'phone', 'email');--> statement-breakpoint
+ALTER TABLE "reporting_channels" ADD COLUMN "type" "reporting_channel_type" DEFAULT 'links' NOT NULL;

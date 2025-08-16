@@ -1,5 +1,8 @@
+"use client"
+
 import ReportForm from "@/components/report/report-form"
-import { NextResponse } from "next/server"
+import ReceiptModal from "@/components/report/receipt-modal"
+import { useState } from "react"
 
 // TODO: Replace with real categories from DB when API is ready
 const demoCategories = [
@@ -9,10 +12,20 @@ const demoCategories = [
 ]
 
 export default function ReportPage() {
+  const [receipt, setReceipt] = useState<{ code: string; passphrase: string; feedbackDueAt?: string | null } | null>(null)
+
   async function handleSubmit(formData: any) {
-    // Placeholder: this will POST to /api/reports in Step 15
-    // For now, just noop
-    console.log("submit", formData)
+    const resp = await fetch("/api/reports", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(formData),
+    })
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}))
+      throw new Error(err.error || "Failed to submit report")
+    }
+    const data = await resp.json()
+    setReceipt({ code: data.caseId || data.receiptCode, passphrase: data.caseKey || data.passphrase, feedbackDueAt: data.feedbackDueAt })
   }
 
   const captchaProvider = (process.env.NEXT_PUBLIC_CAPTCHA_PROVIDER as "turnstile" | "hcaptcha") || "turnstile"
@@ -28,6 +41,13 @@ export default function ReportPage() {
         onSubmit={handleSubmit}
       />
       <p className="mt-4 text-sm text-muted-foreground">You can submit anonymously. Your identity will not be stored unless you choose to provide contact information.</p>
+      <ReceiptModal
+        open={!!receipt}
+        onClose={() => setReceipt(null)}
+        receiptCode={receipt?.code || ""}
+        passphrase={receipt?.passphrase || ""}
+        feedbackDueAt={receipt?.feedbackDueAt || null}
+      />
     </div>
   )
 }

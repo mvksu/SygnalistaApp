@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core"
+import { pgTable, text, timestamp, uuid, boolean } from "drizzle-orm/pg-core"
 import { organizations } from "./organizations"
 
 export const reportCategories = pgTable("report_categories", {
@@ -8,6 +8,7 @@ export const reportCategories = pgTable("report_categories", {
     .references(() => organizations.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   description: text("description"),
+  active: boolean("active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull()
 })

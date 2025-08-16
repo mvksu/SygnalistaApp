@@ -10,8 +10,11 @@ import { reports } from "./schema/reports"
 import { reportMessages } from "./schema/reportMessages"
 import { attachments } from "./schema/attachments"
 import { slaEvents } from "./schema/sla"
+import { reportingChannels } from "./schema/reportingChannels"
 import { auditLog } from "./schema/audit"
 import { exportsTable } from "./schema/exports"
+import { surveys, surveyOptions, surveyQuestions } from "./schema/surveys"
+import { onboardingSteps } from "./schema/userOnboarding"
 
 config({ path: ".env.local" })
 
@@ -31,7 +34,12 @@ const dbSchema = {
   attachments,
   slaEvents,
   auditLog,
-  exportsTable
+  exportsTable,
+  reportingChannels,
+  surveys,
+  surveyQuestions,
+  surveyOptions
+  ,onboardingSteps
 }
 
 function initializeDb(url: string) {

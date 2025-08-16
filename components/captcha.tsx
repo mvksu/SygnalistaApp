@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 type Provider = "turnstile" | "hcaptcha"
 
@@ -19,44 +19,90 @@ declare global {
   }
 }
 
-export function Captcha({ provider = "turnstile", siteKey, onVerify, theme = "light", className }: CaptchaProps) {
-  useEffect(() => {
+export function Captcha({ provider = "hcaptcha", siteKey, onVerify, theme = "light", className }: CaptchaProps) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  const clearAndRender = useCallback(() => {
+    setError(null)
+    if (!siteKey) return
     if (provider === "turnstile") {
-      const script = document.createElement("script")
-      script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
-      script.async = true
-      script.onload = () => {
-        if (!window.turnstile) return
-        window.turnstile.render("#captcha-container", {
-          sitekey: siteKey,
-          theme,
-          callback: (token: string) => onVerify(token),
-        })
+      if (!window.turnstile || !containerRef.current) return
+      containerRef.current.innerHTML = ""
+      window.turnstile.render(containerRef.current, {
+        sitekey: siteKey,
+        theme,
+        callback: (token: string) => onVerify(token),
+        "expired-callback": () => onVerify(""),
+        "error-callback": () => setError("Captcha error. Please reload and try again."),
+      })
+      return
+    }
+    if (!window.hcaptcha || !containerRef.current) return
+    containerRef.current.innerHTML = ""
+    window.hcaptcha.render(containerRef.current, {
+      sitekey: siteKey,
+      theme,
+      callback: (token: string) => onVerify(token),
+      "expired-callback": () => onVerify(""),
+      "error-callback": () => setError("Captcha error. Please reload and try again."),
+    })
+  }, [provider, siteKey, theme, onVerify])
+
+  useEffect(() => {
+    // Dev fallback if no site key: bypass with dummy token
+    if (!siteKey) {
+      onVerify("dev-token")
+      return
+    }
+
+    const renderTurnstile = () => clearAndRender()
+    const renderHcaptcha = () => clearAndRender()
+
+    if (provider === "turnstile") {
+      const id = "turnstile-script"
+      if (!document.getElementById(id)) {
+        const script = document.createElement("script")
+        script.id = id
+        script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
+        script.async = true
+        script.onload = renderTurnstile
+        document.body.appendChild(script)
+      } else {
+        renderTurnstile()
       }
-      document.body.appendChild(script)
-      return () => {
-        document.body.removeChild(script)
-      }
-    } else {
+      return
+    }
+
+    const id = "hcaptcha-script"
+    if (!document.getElementById(id)) {
       const script = document.createElement("script")
+      script.id = id
       script.src = "https://js.hcaptcha.com/1/api.js?render=explicit"
       script.async = true
-      script.onload = () => {
-        if (!window.hcaptcha) return
-        window.hcaptcha.render("#captcha-container", {
-          sitekey: siteKey,
-          theme,
-          callback: (token: string) => onVerify(token),
-        })
-      }
+      script.onload = renderHcaptcha
       document.body.appendChild(script)
-      return () => {
-        document.body.removeChild(script)
-      }
+    } else {
+      renderHcaptcha()
     }
-  }, [provider, siteKey, onVerify, theme])
+  }, [provider, siteKey, onVerify, theme, clearAndRender])
 
-  return <div id="captcha-container" className={className} />
+  return (
+    <div className={className}>
+      <div ref={containerRef} />
+      {error && (
+        <div className="mt-2 text-sm text-red-600">{error}</div>
+      )}
+      <button
+        type="button"
+        className="mt-2 text-xs text-muted-foreground underline"
+        onClick={clearAndRender}
+        aria-label="Reload captcha"
+      >
+        Reload captcha
+      </button>
+    </div>
+  )
 }
 
 

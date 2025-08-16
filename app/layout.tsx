@@ -3,6 +3,7 @@ import { TooltipProvider } from "@/components/ui/tooltip"
 import { TailwindIndicator } from "@/components/utility/tailwind-indicator"
 import { ClerkProvider } from "@clerk/nextjs"
 import type { Metadata } from "next"
+import { detectLocale, getDictionary, type Locale } from "@/src/i18n/config"
 import { ThemeProvider } from "next-themes"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Toaster } from "sonner"
@@ -19,15 +20,18 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "Mckay's App Template",
-  description: "The easiest way to start your next project."
+  title: "Signalista",
+  description: "Confidential whistleblowing platform for Polish/EU compliance."
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  // Detect locale on server and load dictionary (basic example)
+  const locale: Locale = detectLocale()
+  const dict = await getDictionary(locale)
   return (
     <ClerkProvider>
       <html lang="en" suppressHydrationWarning>

@@ -1,6 +1,6 @@
 "use client"
 
-import { Link, Settings2 } from "lucide-react"
+import { LayoutDashboard, CaseSensitive, BarChart2, Building2, Users, ShieldCheck, FolderTree, Radio, ClipboardList } from "lucide-react"
 import * as React from "react"
 
 import {
@@ -29,41 +29,58 @@ export function AppSidebar({
     user: userData,
     navMain: [
       {
-        title: "Nav Item 1",
-        url: "#",
-        icon: Link,
-        items: [
-          {
-            title: "Sub Item 1",
-            url: "/dashboard/nav-item-1"
-          },
-          {
-            title: "Sub Item 2",
-            url: "/dashboard/nav-item-2"
-          }
-        ]
+        title: "Dashboard",
+        url: "/dashboard",
+        icon: LayoutDashboard,
+        items: []
       },
       {
-        title: "Nav Item 2",
-        url: "#",
-        icon: Link,
-        items: [
-          {
-            title: "Sub Item 1",
-            url: "/dashboard/nav-item-1"
-          }
-        ]
+        title: "Cases",
+        url: "/dashboard/cases",
+        icon: CaseSensitive,
+        items: []
       },
       {
-        title: "Settings",
-        url: "#",
-        icon: Settings2,
-        items: [
-          {
-            title: "General",
-            url: "/dashboard/settings"
-          }
-        ]
+        title: "Statistics",
+        url: "/dashboard/statistics",
+        icon: BarChart2,
+        items: []
+      },
+      {
+        title: "Departments",
+        url: "/dashboard/departments",
+        icon: Building2,
+        items: []
+      },
+      {
+        title: "Members",
+        url: "/dashboard/members",
+        icon: Users,
+        items: []
+      },
+      {
+        title: "Access Configuration",
+        url: "/dashboard/access",
+        icon: ShieldCheck,
+        items: []
+      },
+      {
+        title: "Categoring",
+        url: "/dashboard/categories",
+        icon: FolderTree,
+        items: []
+      },
+      {
+        title: "Reporting Channels",
+        url: "/dashboard/reporting-channels",
+        icon: Radio,
+        items: []
+      },
+      {
+        title: "Surveys",
+        url: "/dashboard/surveys",
+        icon: ClipboardList,
+        items: []
       }
     ]
   }

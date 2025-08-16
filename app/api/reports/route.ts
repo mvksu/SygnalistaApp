@@ -1,0 +1,107 @@
+import { NextRequest, NextResponse } from "next/server"
+import { db } from "@/db"
+import { reports } from "@/db/schema/reports"
+import { reportMessages } from "@/db/schema/reportMessages"
+import { eq } from "drizzle-orm"
+import { reportIntakeSchema } from "@/lib/validation/report"
+import { verifyCaptcha } from "@/lib/captcha"
+import { generateCaseId, generateCaseKey, hashCaseKey } from "@/lib/ids"
+import { encryptField } from "@/lib/crypto/encryption"
+import { auth } from "@clerk/nextjs/server"
+import { reportingChannels } from "@/db/schema/reportingChannels"
+
+// Compute feedback due (3 months) and initial SLA windows server-side
+function addMonths(date: Date, months: number): Date {
+  const d = new Date(date)
+  d.setMonth(d.getMonth() + months)
+  return d
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    // Determine organization context
+    // 1) Prefer explicit channel slug provided by client (header or query)
+    const url = new URL(request.url)
+    const channelSlug = request.headers.get("x-channel-slug") || url.searchParams.get("channel") || undefined
+
+    let orgId: string | null = null
+    if (channelSlug) {
+      const channel = await db.query.reportingChannels.findFirst({ where: eq(reportingChannels.slug, channelSlug) })
+      if (channel) {
+        orgId = channel.orgId
+      } else {
+        return NextResponse.json({ error: "Invalid channel" }, { status: 400 })
+      }
+    } else {
+      // 2) Fallback to Clerk org context (authenticated dashboard submission)
+      const { orgId: clerkOrgId } = await auth()
+      if (!clerkOrgId) {
+        return NextResponse.json({ error: "Organization context required" }, { status: 400 })
+      }
+      const { getDbOrgIdForClerkOrg } = await import("@/src/server/orgs")
+      orgId = await getDbOrgIdForClerkOrg(clerkOrgId)
+    }
+
+    const body = await request.json()
+    const parsed = reportIntakeSchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Invalid data", details: parsed.error.issues }, { status: 400 })
+    }
+
+    const { categoryId, body: messageBody, anonymous, contact, captchaToken } = parsed.data
+
+    // Rate limiting should be applied by a middleware in production; optionally add lightweight guard here
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || undefined
+
+    const captcha = await verifyCaptcha(captchaToken, ip)
+    if (!captcha.success) {
+      return NextResponse.json({ error: "CAPTCHA failed", details: captcha.error }, { status: 400 })
+    }
+
+    const now = new Date()
+    const receipt = generateCaseId()
+    const passphrase = generateCaseKey()
+    const passphraseHash = hashCaseKey(passphrase)
+
+    const reporterMode = anonymous ? "ANON" : "IDENTIFIED"
+    const contactPayload = contact ? JSON.stringify(contact) : ""
+    const contactEncrypted = contact ? encryptField(orgId!, contactPayload) : null
+
+    // Insert report
+    const [inserted] = await db
+      .insert(reports)
+      .values({
+        orgId,
+        categoryId,
+        status: "OPEN",
+        createdAt: now,
+        feedbackDueAt: addMonths(now, 3),
+        reporterMode,
+        reporterContactEncrypted: contactEncrypted ? JSON.stringify(contactEncrypted) : null,
+        caseId: receipt,
+        caseKeyHash: passphraseHash,
+      })
+      .returning()
+
+    // First message saved encrypted under org key
+    const firstMessageEncrypted = encryptField(orgId!, messageBody)
+    await db.insert(reportMessages).values({
+      reportId: inserted.id,
+      sender: "REPORTER",
+      bodyEncrypted: JSON.stringify(firstMessageEncrypted),
+      createdAt: now,
+    })
+
+    return NextResponse.json({
+      id: inserted.id,
+      caseId: receipt,
+      caseKey: passphrase, // returned ONCE; client must show securely and not store
+      feedbackDueAt: inserted.feedbackDueAt,
+    })
+  } catch (err: any) {
+    console.error("Create report error", err)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
+}
+
+

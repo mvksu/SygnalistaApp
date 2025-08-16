@@ -8,7 +8,8 @@ import {
 } from "@/actions/customers"
 import { SelectCustomer } from "@/db/schema/customers"
 import { stripe } from "@/lib/stripe"
-import { auth } from "@clerk/nextjs/server"
+import { auth, currentUser } from "@clerk/nextjs/server"
+import { headers } from "next/headers"
 import Stripe from "stripe"
 
 type MembershipStatus = SelectCustomer["membership"]
@@ -53,7 +54,7 @@ export const updateStripeCustomer = async (
 
     // Check if customer exists
     const existingCustomer = await getCustomerByUserId(userId)
-    
+
     let result
     if (!existingCustomer) {
       // Create customer first
@@ -61,7 +62,7 @@ export const updateStripeCustomer = async (
       if (!createResult.isSuccess) {
         throw new Error("Failed to create customer profile")
       }
-      
+
       // Then update with Stripe data
       result = await updateCustomerByUserId(userId, {
         stripeCustomerId: customerId,
@@ -154,6 +155,13 @@ export const createCheckoutUrl = async (
     const url = new URL(paymentLinkUrl)
     url.searchParams.set("client_reference_id", userId)
 
+    // Prefill email so users don't have to type it again on Stripe Checkout
+    const user = await currentUser()
+    const email = user?.emailAddresses?.[0]?.emailAddress
+    if (email) {
+      url.searchParams.set("prefilled_email", email)
+    }
+
     return { url: url.toString(), error: null }
   } catch (error) {
     console.error("Error creating checkout URL:", error)
@@ -161,6 +169,70 @@ export const createCheckoutUrl = async (
       url: null,
       error:
         error instanceof Error ? error.message : "Failed to create checkout URL"
+    }
+  }
+}
+
+export const createCheckoutSession = async (
+  plan: "monthly" | "yearly"
+): Promise<{ url: string | null; error: string | null }> => {
+  try {
+    const { userId } = await auth()
+    if (!userId) {
+      return { url: null, error: "User must be authenticated" }
+    }
+
+    const user = await currentUser()
+    const email = user?.emailAddresses?.[0]?.emailAddress || undefined
+
+    const priceMonthly = process.env.STRIPE_PRICE_PRO_MONTHLY
+    const priceYearly = process.env.STRIPE_PRICE_PRO_YEARLY
+    const priceId = plan === "monthly" ? priceMonthly : priceYearly
+
+    // If price ID isn't configured, gracefully fall back to Payment Link envs
+    if (!priceId) {
+      const fallbackLink =
+        plan === "monthly"
+          ? process.env.NEXT_PUBLIC_STRIPE_PAYMENT_LINK_MONTHLY
+          : process.env.NEXT_PUBLIC_STRIPE_PAYMENT_LINK_YEARLY
+
+      if (fallbackLink) {
+        const url = new URL(fallbackLink)
+        url.searchParams.set("client_reference_id", userId)
+        if (email) url.searchParams.set("prefilled_email", email)
+        return { url: url.toString(), error: null }
+      }
+
+      return {
+        url: null,
+        error: `Missing Stripe price ID for ${plan}. Set STRIPE_PRICE_PRO_${plan.toUpperCase()} or NEXT_PUBLIC_STRIPE_PAYMENT_LINK_${plan.toUpperCase()} in env.`
+      }
+    }
+
+    // Derive app URL
+    const originHeader = (await headers()).get("origin")
+    const appUrl =
+      process.env.NEXT_PUBLIC_APP_URL || originHeader || "http://localhost:3000"
+
+    const session = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      client_reference_id: userId,
+      customer_email: email,
+      line_items: [{ price: priceId, quantity: 1 }],
+      success_url: `${appUrl}/dashboard?checkout=success`,
+      cancel_url: `${appUrl}/pricing?checkout=cancelled`,
+      allow_promotion_codes: true
+    })
+
+    return { url: session.url, error: null }
+  } catch (error) {
+    console.error("Error creating checkout session:", error)
+    return {
+      url: null,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to create checkout session"
     }
   }
 }

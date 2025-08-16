@@ -20,6 +20,7 @@ const pricing = [
       "API access",
       "Export data"
     ],
+    plan: "monthly" as const,
     paymentLink: process.env.NEXT_PUBLIC_STRIPE_PAYMENT_LINK_MONTHLY,
     icon: CreditCard,
     highlight: false
@@ -37,6 +38,7 @@ const pricing = [
       "Dedicated account manager",
       "99.9% uptime SLA"
     ],
+    plan: "yearly" as const,
     paymentLink: process.env.NEXT_PUBLIC_STRIPE_PAYMENT_LINK_YEARLY,
     icon: Zap,
     highlight: true
@@ -169,9 +171,9 @@ export function PricingSection() {
                 ))}
               </ul>
 
-              {tier.paymentLink ? (
+              {tier.plan ? (
                 <PricingButton
-                  paymentLink={tier.paymentLink}
+                  plan={tier.plan}
                   className={`mt-8 w-full ${
                     tier.highlight
                       ? "bg-primary-foreground text-primary hover:bg-primary-foreground/90"

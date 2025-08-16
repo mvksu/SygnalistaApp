@@ -1,6 +1,6 @@
 "use client"
 
-import { createCheckoutUrl } from "@/actions/stripe"
+import { createCheckoutSession, createCheckoutUrl } from "@/actions/stripe"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@clerk/nextjs"
 import { useRouter } from "next/navigation"
@@ -8,7 +8,8 @@ import { useState } from "react"
 import { toast } from "sonner"
 
 interface PricingButtonProps {
-  paymentLink: string
+  paymentLink?: string
+  plan?: "monthly" | "yearly"
   children: React.ReactNode
   className?: string
   variant?: "default" | "outline" | "secondary"
@@ -16,6 +17,7 @@ interface PricingButtonProps {
 
 export function PricingButton({
   paymentLink,
+  plan,
   children,
   className,
   variant = "default"
@@ -26,8 +28,12 @@ export function PricingButton({
 
   const handleClick = async () => {
     if (!isSignedIn) {
-      // Store the payment link for post-auth redirect
-      sessionStorage.setItem("pendingCheckout", paymentLink)
+      // Store intent for post-auth redirect
+      if (plan) {
+        sessionStorage.setItem("pendingPlan", plan)
+      } else if (paymentLink) {
+        sessionStorage.setItem("pendingCheckout", paymentLink)
+      }
       toast.info("Please sign in to continue")
       router.push("/login")
       return
@@ -35,7 +41,15 @@ export function PricingButton({
 
     setIsLoading(true)
     try {
-      const result = await createCheckoutUrl(paymentLink)
+      let result: { url: string | null; error: string | null }
+
+      if (plan) {
+        result = await createCheckoutSession(plan)
+      } else if (paymentLink) {
+        result = await createCheckoutUrl(paymentLink)
+      } else {
+        throw new Error("No pricing information provided")
+      }
 
       if (result.error) {
         throw new Error(result.error)

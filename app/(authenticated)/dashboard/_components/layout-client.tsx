@@ -9,12 +9,9 @@ import {
   BreadcrumbSeparator
 } from "@/components/ui/breadcrumb"
 import { Separator } from "@/components/ui/separator"
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger
-} from "@/components/ui/sidebar"
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { usePathname } from "next/navigation"
+import { useEffect, useState } from "react"
 import { AppSidebar } from "./app-sidebar"
 
 export default function DashboardClientLayout({
@@ -31,17 +28,8 @@ export default function DashboardClientLayout({
 }) {
   const pathname = usePathname()
 
-  // Read the sidebar state from cookie on initial load
-  const getCookieValue = (name: string) => {
-    if (typeof document === "undefined") return null
-    const value = `; ${document.cookie}`
-    const parts = value.split(`; ${name}=`)
-    if (parts.length === 2) return parts.pop()?.split(";").shift()
-    return null
-  }
-
-  const savedState = getCookieValue("sidebar_state")
-  const defaultOpen = savedState === null ? true : savedState === "true"
+  // Always expanded sidebar
+  const defaultOpen = true
 
   const getBreadcrumbs = () => {
     const paths = pathname.split("/").filter(Boolean)
@@ -142,7 +130,6 @@ export default function DashboardClientLayout({
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
           <div className="flex items-center gap-2 px-4">
-            <SidebarTrigger className="-ml-1" />
             <Separator
               orientation="vertical"
               className="mr-2 data-[orientation=vertical]:h-4"

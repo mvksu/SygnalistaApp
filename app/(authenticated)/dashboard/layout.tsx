@@ -16,9 +16,11 @@ export default async function DashboardLayout({
 
   const customer = await getCustomerByUserId(user.id)
 
+  const disableProGate = process.env.NEXT_PUBLIC_DISABLE_PRO_GATE === "true"
+
   // Gate dashboard access for pro members only
   // Store a message to show why they were redirected
-  if (!customer || customer.membership !== "pro") {
+  if (!disableProGate && (!customer || customer.membership !== "pro")) {
     // Using searchParams to pass a message that can be read by client components
     redirect("/?redirect=dashboard#pricing")
   }
@@ -30,7 +32,7 @@ export default async function DashboardLayout({
         : user.firstName || user.username || "User",
     email: user.emailAddresses[0]?.emailAddress || "",
     avatar: user.imageUrl,
-    membership: customer.membership
+    membership: customer?.membership || "pro"
   }
 
   return (

@@ -25,8 +25,8 @@ export const reports = pgTable("reports", {
   feedbackDueAt: timestamp("feedback_due_at"),
   reporterMode: reporterMode("reporter_mode").default("ANON").notNull(),
   reporterContactEncrypted: text("reporter_contact_encrypted"),
-  receiptCode: text("receipt_code").notNull().unique(),
-  passphraseHash: text("passphrase_hash").notNull()
+  caseId: text("case_id").notNull().unique(),
+  caseKeyHash: text("case_key_hash").notNull()
 })
 
 export type InsertReport = typeof reports.$inferInsert

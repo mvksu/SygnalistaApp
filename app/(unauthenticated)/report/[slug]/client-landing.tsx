@@ -1,0 +1,78 @@
+"use client"
+
+import { useState } from "react"
+import ReportForm from "@/components/report/report-form"
+
+type Props = {
+  orgName: string
+  channelSlug: string
+  categories: { id: string; name: string }[]
+  captchaSiteKey: string
+  captchaProvider?: "hcaptcha"
+}
+
+export default function ReportLandingClient({ orgName, channelSlug, categories, captchaSiteKey, captchaProvider = "hcaptcha" }: Props) {
+  const [started, setStarted] = useState(false)
+
+  return (
+    <div className="space-y-8">
+      {!started && (
+        <>
+          <header className="space-y-2">
+            <h1 className="text-2xl font-semibold">{orgName} Whistleblower Channel</h1>
+            <p className="text-muted-foreground">
+              As an employee, you can report serious matters anonymously or if you have reasonable suspicion of such matters.
+            </p>
+          </header>
+
+          <section className="space-y-4">
+            <h2 className="text-lg font-semibold">Anonymous reporting of serious matters</h2>
+            <p>
+              Through this page, you can submit information about reprehensible matters or report actions that are unethical,
+              illegal or in violation of internal policies. The scheme is to be used to bring matters to light that would not
+              otherwise have come to light.
+            </p>
+            <p>
+              It can be reported confidentially with indication of name and contact information or, if desired, 100% anonymously.
+              All inquiries are treated confidentially and securely.
+            </p>
+          </section>
+
+          <section className="space-y-4">
+            <h3 className="font-medium">HR related matters</h3>
+            <p>
+              HR related matters cannot be reported in this system, but must instead be discussed with the immediate manager,
+              director or HR.
+            </p>
+          </section>
+
+          <section className="space-y-4">
+            <p>From this page you are able to make a new secure report or follow up on an existing report.</p>
+            <ol className="list-decimal pl-5 space-y-1">
+              <li>You wish to see the status of your report, to check if action is being taken.</li>
+              <li>You wish to provide additional information to your report.</li>
+              <li>The system administrators has requested additional information from you to help them resolve the issue or take the appropriate action.</li>
+            </ol>
+          </section>
+
+          <div className="flex items-center gap-2">
+            <button onClick={() => setStarted(true)} className="inline-flex rounded bg-primary px-4 py-2 text-primary-foreground">
+              Create New Report
+            </button>
+            <a href={`/r/${""}`} onClick={(e)=>{e.preventDefault(); window.location.href="/r/"}} className="inline-flex rounded border px-4 py-2 text-sm">
+              Check Case
+            </a>
+          </div>
+        </>
+      )}
+
+      {started && (
+        <section id="report-form" className="space-y-4">
+          <ReportForm categories={categories} captchaSiteKey={captchaSiteKey} captchaProvider={captchaProvider} channelSlug={channelSlug} />
+        </section>
+      )}
+    </div>
+  )
+}
+
+

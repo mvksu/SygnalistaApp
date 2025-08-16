@@ -1,6 +1,6 @@
 "use client"
 
-import { createCheckoutUrl } from "@/actions/stripe"
+import { createCheckoutSession, createCheckoutUrl } from "@/actions/stripe"
 import { useAuth } from "@clerk/nextjs"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
@@ -16,14 +16,23 @@ export function CheckoutRedirect() {
 
       setHasChecked(true)
 
+      const pendingPlan = sessionStorage.getItem("pendingPlan")
       const pendingCheckout = sessionStorage.getItem("pendingCheckout")
-      if (!pendingCheckout) return
+      if (!pendingPlan && !pendingCheckout) return
 
       // Clear the pending checkout immediately to prevent loops
+      sessionStorage.removeItem("pendingPlan")
       sessionStorage.removeItem("pendingCheckout")
 
       try {
-        const result = await createCheckoutUrl(pendingCheckout)
+        let result
+        if (pendingPlan === "monthly" || pendingPlan === "yearly") {
+          result = await createCheckoutSession(pendingPlan)
+        } else if (pendingCheckout) {
+          result = await createCheckoutUrl(pendingCheckout)
+        } else {
+          return
+        }
 
         if (result.error) {
           toast.error(result.error)

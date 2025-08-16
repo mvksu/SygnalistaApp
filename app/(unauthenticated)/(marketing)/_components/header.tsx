@@ -22,10 +22,10 @@ export function Header({ userMembership }: HeaderProps) {
   }, [])
 
   const navigation = [
-    { name: "About", href: "/about" },
-    { name: "Features", href: "/features" },
+    { name: "Product", href: "/features" },
     { name: "Pricing", href: "/pricing" },
-    { name: "Contact", href: "/contact" }
+    { name: "Contact", href: "/contact" },
+    { name: "About", href: "/about" },
   ]
 
   return (
@@ -37,7 +37,7 @@ export function Header({ userMembership }: HeaderProps) {
         >
           <div className="flex lg:flex-1">
             <Link href="/" className="-m-1.5 p-1.5">
-              <span className="text-xl font-bold">Mckay's App Template</span>
+              <span className="text-xl font-bold">Signalista</span>
             </Link>
           </div>
           <div className="flex lg:hidden">
@@ -122,7 +122,7 @@ export function Header({ userMembership }: HeaderProps) {
                 className="-m-1.5 p-1.5"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                <span className="text-xl font-bold">Takeoff</span>
+                <span className="text-xl font-bold">Signalista</span>
               </Link>
               <button
                 type="button"
