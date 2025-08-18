@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { Button as UIButton } from "@/components/ui/button"
 import { getBrowserSupabase } from "@/lib/supabase/client"
+import { Captcha } from "@/components/captcha"
 
 async function sha256(file: File): Promise<string> {
   const buf = await file.arrayBuffer()
@@ -18,13 +19,13 @@ async function sha256(file: File): Promise<string> {
 
 type Props = {
   categories: { id: string; name: string }[]
-  captchaProvider?: "turnstile" | "hcaptcha"
+  captchaProvider?: "turnstile" | "hcaptcha" | "recaptcha"
   captchaSiteKey: string
   onSubmit?: (data: ReportIntake) => Promise<void>
   channelSlug?: string
 }
 
-export default function ReportForm({ categories, onSubmit, channelSlug }: Props) {
+export default function ReportForm({ categories, onSubmit, channelSlug, captchaProvider = (process.env.NEXT_PUBLIC_CAPTCHA_PROVIDER as any) || "hcaptcha", captchaSiteKey = "" }: Props) {
   type MediaRecorderConstructor = typeof MediaRecorder & {
     isTypeSupported?: (type: string) => boolean
   }
@@ -35,7 +36,7 @@ export default function ReportForm({ categories, onSubmit, channelSlug }: Props)
     anonymous: true,
     contact: undefined,
     attachments: [],
-    captchaToken: "dev-token",
+    captchaToken: captchaSiteKey ? "" : "dev-token",
   })
   const [subject, setSubject] = useState("")
   const [files, setFiles] = useState<File[]>([])
@@ -133,7 +134,7 @@ export default function ReportForm({ categories, onSubmit, channelSlug }: Props)
         const res = await fetch(`/api/reports?channel=${encodeURIComponent(channelSlug || "")}` , {
           method: "POST",
           headers: { "Content-Type": "application/json", "x-channel-slug": channelSlug || "" },
-          body: JSON.stringify({ ...parsed.data, attachments: attachmentsForSubmit })
+          body: JSON.stringify({ ...parsed.data, subject, attachments: attachmentsForSubmit })
         })
         if (!res.ok) {
           console.error("Submission failed", await res.text())
@@ -555,7 +556,18 @@ export default function ReportForm({ categories, onSubmit, channelSlug }: Props)
         </div>
       )}
 
-      {/* CAPTCHA temporarily disabled */}
+      {/* CAPTCHA */}
+      <div className="py-2">
+        <Captcha
+          provider={captchaProvider}
+          siteKey={captchaSiteKey}
+          onVerify={token => setField("captchaToken", token)}
+          theme="light"
+        />
+        {errors["captchaToken"] && (
+          <p className="text-sm text-red-600">{errors["captchaToken"]}</p>
+        )}
+      </div>
 
       <Button type="submit" disabled={submitting}>
         {submitting ? "Submitting..." : "Submit report"}

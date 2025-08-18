@@ -6,6 +6,7 @@ import Link from "next/link"
 type CaseRow = {
   id: string
   caseId: string
+  subject?: string
   categoryName: string
   status: string
   createdAt: string | Date
@@ -34,6 +35,7 @@ export function CaseTable({ rows }: { rows: CaseRow[] }) {
         <thead className="bg-muted">
           <tr>
             <th className="text-left p-2">Case ID</th>
+            <th className="text-left p-2">Subject</th>
             <th className="text-left p-2">Category</th>
             <th className="text-left p-2">Created</th>
             <th className="text-left p-2">Ack due</th>
@@ -50,6 +52,7 @@ export function CaseTable({ rows }: { rows: CaseRow[] }) {
                   {r.caseId}
                 </Link>
               </td>
+              <td className="p-2 max-w-[240px] truncate" title={r.subject || "—"}>{r.subject || "—"}</td>
               <td className="p-2">{r.categoryName}</td>
               <td className="p-2">{format(r.createdAt)}</td>
               <td className="p-2">{format(r.ackDueAt)}</td>

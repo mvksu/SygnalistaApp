@@ -1,63 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
-import { auth, currentUser } from "@clerk/nextjs/server"
+import { auth, clerkClient } from "@clerk/nextjs/server"
 import { db } from "@/db"
 import { users } from "@/db/schema/users"
 import { orgMembers } from "@/db/schema/orgMembers"
-import { eq } from "drizzle-orm"
-import { getDbOrgIdForClerkOrg } from "@/src/server/orgs"
-
-export async function GET() {
-  try {
-    const { orgId: clerkOrgId } = await auth()
-    if (!clerkOrgId) return NextResponse.json([], { status: 200 })
-    const orgId = await getDbOrgIdForClerkOrg(clerkOrgId)
-    const members = await db
-      .select({ id: orgMembers.id, role: orgMembers.role, name: users.name, email: users.email })
-      .from(orgMembers)
-      .leftJoin(users, eq(users.id, orgMembers.userId))
-      .where(eq(orgMembers.orgId, orgId))
-    return NextResponse.json(members)
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message || "Failed" }, { status: 500 })
-  }
-}
-
-export async function POST(req: NextRequest) {
-  try {
-    const { orgId: clerkOrgId } = await auth()
-    if (!clerkOrgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    const orgId = await getDbOrgIdForClerkOrg(clerkOrgId)
-
-    const body = await req.json()
-    const firstName: string = String(body?.firstName || "").trim()
-    const lastName: string = String(body?.lastName || "").trim()
-    const email: string = String(body?.email || "").trim()
-    const role: "ADMIN" | "HANDLER" | "AUDITOR" = body?.role || "HANDLER"
-    if (!email) return NextResponse.json({ error: "Email required" }, { status: 400 })
-
-    let u = await db.query.users.findFirst({ where: eq(users.email, email) })
-    if (!u) {
-      const [newUser] = await db
-        .insert(users)
-        .values({ clerkId: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, email, name: `${firstName} ${lastName}`.trim() })
-        .returning()
-      u = newUser
-    }
-
-    await db.insert(orgMembers).values({ orgId, userId: u.id, role })
-
-    return NextResponse.json({ ok: true })
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message || "Failed" }, { status: 500 })
-  }
-}
-
-import { NextRequest, NextResponse } from "next/server"
-import { auth, currentUser } from "@clerk/nextjs/server"
-import { db } from "@/db"
-import { users } from "@/db/schema/users"
-import { orgMembers } from "@/db/schema/orgMembers"
-import { eq } from "drizzle-orm"
+import { and, eq } from "drizzle-orm"
 
 async function getDbOrgId() {
   const { orgId: clerkOrgId } = await auth()
@@ -68,25 +14,225 @@ async function getDbOrgId() {
 
 export async function POST(req: NextRequest) {
   try {
+    const { orgId: clerkOrgId } = await auth()
+    if (!clerkOrgId)
+      return NextResponse.json(
+        { error: "No Clerk organization context", code: "no_org_context" },
+        { status: 400 }
+      )
     const orgId = await getDbOrgId()
-    if (!orgId) return NextResponse.json({ error: "No org" }, { status: 400 })
+    if (!orgId)
+      return NextResponse.json(
+        { error: "Organization not found", code: "org_not_found" },
+        { status: 400 }
+      )
+
     const body = await req.json()
     const first = String(body?.firstName || "").trim()
     const last = String(body?.lastName || "").trim()
     const email = String(body?.email || "").trim()
-    const role = String(body?.role || "HANDLER").toUpperCase()
-    if (!email) return NextResponse.json({ error: "Email required" }, { status: 400 })
+    const role = String(body?.role || "HANDLER").toUpperCase() as
+      | "ADMIN"
+      | "HANDLER"
+      | "AUDITOR"
+    if (!email)
+      return NextResponse.json(
+        { error: "Email required", code: "email_required" },
+        { status: 400 }
+      )
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+      return NextResponse.json(
+        { error: "Invalid email format", code: "invalid_email" },
+        { status: 400 }
+      )
+    if (!["ADMIN", "HANDLER", "AUDITOR"].includes(role))
+      return NextResponse.json(
+        { error: "Invalid role", code: "invalid_role" },
+        { status: 400 }
+      )
 
-    let userRow = await db.query.users.findFirst({ where: eq(users.email, email) })
-    if (!userRow) {
-      const [inserted] = await db.insert(users).values({ email, name: `${first} ${last}`.trim(), clerkId: `${email}:${Date.now()}` }).returning()
-      userRow = inserted
+    // 1) Ensure a real Clerk user exists (create+invite if not)
+    const getErrorMessage = (err: unknown) =>
+      err instanceof Error ? err.message : typeof err === "string" ? err : JSON.stringify(err)
+
+    let cc
+    try {
+      cc = await clerkClient()
+    } catch (err: unknown) {
+      console.error("[members.POST] clerkClient init failed", err)
+      return NextResponse.json(
+        { error: "Auth provider unavailable", code: "clerk_unavailable" },
+        { status: 502 }
+      )
     }
 
-    await db.insert(orgMembers).values({ orgId, userId: userRow.id, role: role as any })
+    let existing
+    try {
+      existing = (await cc.users.getUserList({ emailAddress: [email] })).data?.[0]
+    } catch (err: unknown) {
+      console.error("[members.POST] getUserList failed", err)
+      return NextResponse.json(
+        { error: "Failed to lookup user", code: "clerk_lookup_failed" },
+        { status: 502 }
+      )
+    }
+    let clerkUserId = existing?.id as string | undefined
+    if (!clerkUserId) {
+      try {
+        const createdUser = await cc.users.createUser({
+          emailAddress: [email],
+          firstName: first || undefined,
+          lastName: last || undefined
+        })
+        clerkUserId = createdUser.id
+      } catch (err: unknown) {
+        // If another process created the user concurrently, re-fetch
+        console.error("[members.POST] createUser failed", err)
+        try {
+          existing = (await cc.users.getUserList({ emailAddress: [email] })).data?.[0]
+          clerkUserId = existing?.id
+        } catch {}
+        if (!clerkUserId) {
+          return NextResponse.json(
+            { error: "Failed to create user", code: "clerk_create_user_failed" },
+            { status: 502 }
+          )
+        }
+      }
+      // Best-effort invite email (optional)
+      try {
+        await cc.invitations.createInvitation({
+          emailAddress: email,
+          notify: true,
+          ignoreExisting: true
+        })
+      } catch (err: unknown) {
+        // Non-fatal; log and continue
+        console.warn("[members.POST] createInvitation warning", getErrorMessage(err))
+      }
+    }
+
+    // 2) Ensure Clerk org exists, then create membership with requested role
+    const parseClerkError = (err: unknown) => {
+      const anyErr = err as { status?: number; clerkTraceId?: string; errors?: unknown }
+      return {
+        status: anyErr?.status,
+        traceId: anyErr?.clerkTraceId,
+        errors: anyErr?.errors
+      }
+    }
+
+    try {
+      await cc.organizations.getOrganization({ organizationId: clerkOrgId })
+    } catch (err: unknown) {
+      const details = parseClerkError(err)
+      console.error("[members.POST] getOrganization failed", err)
+      return NextResponse.json(
+        { error: "Clerk organization not found", code: "clerk_org_not_found", details },
+        { status: 404 }
+      )
+    }
+
+    try {
+      // Clerk default roles: 'admin' and 'basic_member'
+      const clerkRole: "admin" | "basic_member" = role === "ADMIN" ? "admin" : "basic_member"
+      await cc.organizations.createOrganizationMembership({
+        organizationId: clerkOrgId,
+        userId: clerkUserId!,
+        role: clerkRole
+      })
+    } catch (err: unknown) {
+      // If already a member, ignore
+      const message = String(getErrorMessage(err) || "").toLowerCase()
+      if (message.includes("already")) {
+        // noop
+      } else {
+        const details = parseClerkError(err)
+        console.error("[members.POST] createOrganizationMembership failed", err)
+        return NextResponse.json(
+          { error: "Failed to add user to organization", code: "clerk_membership_failed", details },
+          { status: 502 }
+        )
+      }
+    }
+
+    // 3) Mirror to our DB: upsert user by clerkId/email, then upsert orgMembers
+    let dbUser
+    try {
+      dbUser = await db.query.users.findFirst({
+        where: eq(users.clerkId, clerkUserId!)
+      })
+    } catch (err: unknown) {
+      console.error("[members.POST] DB lookup user by clerkId failed", err)
+      return NextResponse.json(
+        { error: "Database error", code: "db_lookup_failed" },
+        { status: 500 }
+      )
+    }
+    if (!dbUser) {
+      try {
+        dbUser = await db.transaction(async tx => {
+          const existingByEmail = await tx.query.users.findFirst({
+            where: eq(users.email, email)
+          })
+          if (existingByEmail) {
+            await tx
+              .update(users)
+              .set({
+                clerkId: clerkUserId!,
+                name: `${first} ${last}`.trim() || existingByEmail.name
+              })
+              .where(eq(users.id, existingByEmail.id))
+            return (await tx.query.users.findFirst({
+              where: eq(users.id, existingByEmail.id)
+            }))!
+          }
+          const [inserted] = await tx
+            .insert(users)
+            .values({
+              clerkId: clerkUserId!,
+              email,
+              name: `${first} ${last}`.trim()
+            })
+            .returning()
+          return inserted
+        })
+      } catch (err: unknown) {
+        console.error("[members.POST] DB upsert user failed", err)
+        return NextResponse.json(
+          { error: "Database error", code: "db_upsert_user_failed" },
+          { status: 500 }
+        )
+      }
+    }
+
+    try {
+      const already = await db.query.orgMembers.findFirst({
+        where: and(eq(orgMembers.orgId, orgId), eq(orgMembers.userId, dbUser.id))
+      })
+      if (!already) {
+        await db.insert(orgMembers).values({ orgId, userId: dbUser.id, role })
+      } else if (already.role !== role) {
+        await db
+          .update(orgMembers)
+          .set({ role })
+          .where(eq(orgMembers.id, already.id))
+      }
+    } catch (err: unknown) {
+      console.error("[members.POST] DB upsert orgMembers failed", err)
+      return NextResponse.json(
+        { error: "Database error", code: "db_upsert_membership_failed" },
+        { status: 500 }
+      )
+    }
+
     return NextResponse.json({ ok: true })
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message || "Failed" }, { status: 500 })
+  } catch (e: unknown) {
+    console.error("[members.POST] unexpected error", e)
+    return NextResponse.json(
+      { error: (e instanceof Error ? e.message : "Failed"), code: "unexpected_error" },
+      { status: 500 }
+    )
   }
 }
 
@@ -94,11 +240,12 @@ export async function GET() {
   try {
     const orgId = await getDbOrgId()
     if (!orgId) return NextResponse.json([], { status: 200 })
-    const rows = await db.query.orgMembers.findMany({ where: eq(orgMembers.orgId, orgId) })
+    const rows = await db.query.orgMembers.findMany({
+      where: eq(orgMembers.orgId, orgId)
+    })
     return NextResponse.json(rows, { status: 200 })
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message || "Failed" }, { status: 500 })
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : "Failed"
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
-
-

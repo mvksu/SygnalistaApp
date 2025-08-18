@@ -70,6 +70,7 @@ export async function listCases(
     .select({
       id: reports.id,
       caseId: reports.caseId,
+      subject: reports.subject,
       categoryName: reportCategories.name,
       status: reports.status,
       createdAt: reports.createdAt,
@@ -93,6 +94,7 @@ export async function listCases(
     return {
       id: r.id as string,
       caseId: r.caseId as string,
+      subject: (r as any).subject || '—',
       categoryName: r.categoryName as string,
       status: r.status as any,
       createdAt: r.createdAt as Date,
@@ -101,7 +103,6 @@ export async function listCases(
       ackDueAt,
       ackStatus,
       feedbackStatus,
-      subject: "—",
       severity: "—",
       nextDeadline,
       lastActivity: r.createdAt as Date,

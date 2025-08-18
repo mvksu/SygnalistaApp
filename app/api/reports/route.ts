@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/db"
 import { reports } from "@/db/schema/reports"
+import { orgMembers, orgRole } from "@/db/schema/orgMembers"
+import { users } from "@/db/schema/users"
 import { reportMessages } from "@/db/schema/reportMessages"
 import { attachments } from "@/db/schema/attachments"
 import { eq } from "drizzle-orm"
@@ -69,17 +71,23 @@ export async function POST(request: NextRequest) {
     const contactPayload = contact ? JSON.stringify(contact) : ""
     const contactEncrypted = contact ? encryptField(orgId!, contactPayload) : null
 
+    // Resolve default assignee (first ADMIN in org)
+    const adminMember = await db.query.orgMembers.findFirst({ where: and(eq(orgMembers.orgId, orgId!), eq(orgMembers.role, "ADMIN" as any)) })
+    const defaultAssignee = adminMember ? adminMember.userId : null
+
     // Insert report
     const [inserted] = await db
       .insert(reports)
       .values({
         orgId,
         categoryId,
+        subject: (body as any)?.subject || null,
         status: "OPEN",
         createdAt: now,
         feedbackDueAt: addMonths(now, 3),
         reporterMode,
         reporterContactEncrypted: contactEncrypted ? JSON.stringify(contactEncrypted) : null,
+        assigneeId: defaultAssignee,
         caseId: receipt,
         caseKeyHash: passphraseHash,
       })

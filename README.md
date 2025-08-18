@@ -43,6 +43,25 @@ STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
 NEXT_PUBLIC_STRIPE_PAYMENT_LINK_YEARLY=
 NEXT_PUBLIC_STRIPE_PAYMENT_LINK_MONTHLY=
+
+# Supabase Storage
+SUPABASE_URL=
+SUPABASE_SERVICE_ROLE_KEY=
+SUPABASE_STORAGE_BUCKET=uploads
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+
+# Cron security
+CRON_SECRET=
+
+# CAPTCHA
+NEXT_PUBLIC_CAPTCHA_PROVIDER=hcaptcha # or turnstile or recaptcha
+NEXT_PUBLIC_HCAPTCHA_SITE_KEY=
+HCAPTCHA_SECRET_KEY=
+NEXT_PUBLIC_TURNSTILE_SITE_KEY=
+TURNSTILE_SECRET_KEY=
+NEXT_PUBLIC_RECAPTCHA_SITE_KEY=
+RECAPTCHA_SECRET_KEY=
 ```
 
 ## Setup
@@ -51,3 +70,12 @@ NEXT_PUBLIC_STRIPE_PAYMENT_LINK_MONTHLY=
 2. Copy `.env.example` to `.env.local` and fill in the environment variables from above
 3. Run `npm install` to install dependencies
 4. Run `npm run dev` to run the app locally
+
+## Deployment (Vercel)
+
+- Add the env vars above in Vercel Project Settings
+- Provide `CRON_SECRET` and configure Vercel Cron (vercel.json included):
+  - `POST /api/cron/sla` hourly (x-cron-secret header)
+  - `POST /api/cron/snapshot` monthly on the 1st (x-cron-secret header)
+- Set `NEXT_PUBLIC_CAPTCHA_PROVIDER` and appropriate site/secret keys
+- Configure image domains in `next.config.ts` if needed

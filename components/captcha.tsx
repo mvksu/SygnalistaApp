@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 
-type Provider = "turnstile" | "hcaptcha"
+type Provider = "turnstile" | "hcaptcha" | "recaptcha"
 
 export type CaptchaProps = {
   provider?: Provider
@@ -16,6 +16,7 @@ declare global {
   interface Window {
     turnstile?: any
     hcaptcha?: any
+    grecaptcha?: any
   }
 }
 
@@ -38,9 +39,21 @@ export function Captcha({ provider = "hcaptcha", siteKey, onVerify, theme = "lig
       })
       return
     }
-    if (!window.hcaptcha || !containerRef.current) return
+    if (provider === "hcaptcha") {
+      if (!window.hcaptcha || !containerRef.current) return
+      containerRef.current.innerHTML = ""
+      window.hcaptcha.render(containerRef.current, {
+        sitekey: siteKey,
+        theme,
+        callback: (token: string) => onVerify(token),
+        "expired-callback": () => onVerify(""),
+        "error-callback": () => setError("Captcha error. Please reload and try again."),
+      })
+      return
+    }
+    if (!window.grecaptcha || !containerRef.current) return
     containerRef.current.innerHTML = ""
-    window.hcaptcha.render(containerRef.current, {
+    window.grecaptcha.render(containerRef.current, {
       sitekey: siteKey,
       theme,
       callback: (token: string) => onVerify(token),
@@ -58,6 +71,7 @@ export function Captcha({ provider = "hcaptcha", siteKey, onVerify, theme = "lig
 
     const renderTurnstile = () => clearAndRender()
     const renderHcaptcha = () => clearAndRender()
+    const renderRecaptcha = () => clearAndRender()
 
     if (provider === "turnstile") {
       const id = "turnstile-script"
@@ -73,17 +87,30 @@ export function Captcha({ provider = "hcaptcha", siteKey, onVerify, theme = "lig
       }
       return
     }
-
-    const id = "hcaptcha-script"
+    if (provider === "hcaptcha") {
+      const id = "hcaptcha-script"
+      if (!document.getElementById(id)) {
+        const script = document.createElement("script")
+        script.id = id
+        script.src = "https://js.hcaptcha.com/1/api.js?render=explicit"
+        script.async = true
+        script.onload = renderHcaptcha
+        document.body.appendChild(script)
+      } else {
+        renderHcaptcha()
+      }
+      return
+    }
+    const id = "recaptcha-script"
     if (!document.getElementById(id)) {
       const script = document.createElement("script")
       script.id = id
-      script.src = "https://js.hcaptcha.com/1/api.js?render=explicit"
+      script.src = "https://www.google.com/recaptcha/api.js?render=explicit"
       script.async = true
-      script.onload = renderHcaptcha
+      script.onload = renderRecaptcha
       document.body.appendChild(script)
     } else {
-      renderHcaptcha()
+      renderRecaptcha()
     }
   }, [provider, siteKey, onVerify, theme, clearAndRender])
 

@@ -1,5 +1,6 @@
 import { db } from "@/db"
 import { exportsTable } from "@/db/schema/exports"
+import { organizations } from "@/db/schema/organizations"
 import { listRegister } from "@/src/server/services/register"
 import { createHash } from "crypto"
 
@@ -31,6 +32,31 @@ export async function exportRegisterCSV(orgId: string, period: { from: Date; to:
     storageKey: `exports/register-${periodLabel}.csv`,
   })
   return { content, checksum, filename: `register-${periodLabel}.csv` }
+}
+
+/**
+ * Create a monthly snapshot entry for the organization's register.
+ * Uses the first day of the current month to the last day as the period.
+ */
+export async function createMonthlyRegisterSnapshot(orgId: string) {
+  const now = new Date()
+  const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
+  const to = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999))
+  const { checksum } = await exportRegisterCSV(orgId, { from, to })
+  return { orgId, from, to, checksum }
+}
+
+/**
+ * Iterate all organizations and create monthly snapshot entries.
+ */
+export async function createMonthlySnapshotsForAllOrgs() {
+  const allOrgs = await db.select({ id: organizations.id }).from(organizations)
+  const results: Array<{ orgId: string; checksum: string }> = []
+  for (const org of allOrgs) {
+    const res = await createMonthlyRegisterSnapshot(org.id)
+    results.push({ orgId: res.orgId, checksum: res.checksum })
+  }
+  return { count: results.length, results }
 }
 
 

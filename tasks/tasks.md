@@ -126,7 +126,7 @@
   - **User Instructions**: Obtain Turnstile/hCaptcha keys; add envs.
 
 ## Public Intake & Reporter Inbox
-- [ ] Step 14: Public report form UI
+- [x] Step 14: Public report form UI
   - **Task**: Create `/report` wizard (category, text, attachments, optional contact).
   - **Files**:
     - `app/(public)/report/page.tsx`
@@ -181,7 +181,7 @@
   - **Step Dependencies**: Step 7, Step 9, Step 18
   - **User Instructions**: None.
 
-- [ ] Step 20: Case view (thread, actions, status)
+- [x] Step 20: Case view (thread, actions, status)
   - **Task**: Implement `/dashboard/cases/[id]` view: message thread, acknowledge/feedback buttons, add follow-up actions, attachments, audit write.
   - **Files**:
     - `app/(app)/dashboard/cases/[id]/page.tsx`
@@ -201,14 +201,14 @@
   - **Step Dependencies**: Step 9, Step 20
   - **User Instructions**: Configure Vercel (or cron) to call hourly with `CRON_SECRET`.
 
-<!-- - [ ] Step 22: Email notifications (ack/feedback)
+- [x] Step 22: Email notifications (ack/feedback)
   - **Task**: Add Resend mailer with templates; only send if reporter provided contact.
   - **Files**:
     - `src/server/notify/mailer.ts`
     - `src/server/notify/templates/acknowledge.tsx`
     - `src/server/notify/templates/feedback.tsx`
   - **Step Dependencies**: Step 21
-  - **User Instructions**: Set `RESEND_API_KEY` (or other provider); verify domain/sender. -->
+  - **User Instructions**: Set `RESEND_API_KEY` and `RESEND_FROM`; verify domain/sender.
 
 ## Register, Exports, and Audit
 - [x] Step 23: Register view + filters

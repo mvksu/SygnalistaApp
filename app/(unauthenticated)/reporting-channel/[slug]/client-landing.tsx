@@ -8,7 +8,7 @@ type Props = {
   channelSlug: string
   categories: { id: string; name: string }[]
   captchaSiteKey: string
-  captchaProvider?: "hcaptcha"
+  captchaProvider?: "hcaptcha" | "turnstile" | "recaptcha"
 }
 
 export default function ReportLandingClient({ orgName, channelSlug, categories, captchaSiteKey, captchaProvider = "hcaptcha" }: Props) {

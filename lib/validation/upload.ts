@@ -46,6 +46,16 @@ export const ALLOWED_MIME_TYPES = [
   "application/x-7z-compressed",
   "application/gzip",
   "application/x-tar",
+  "audio/mpeg",
+  "audio/mp3",
+  "audio/mp4",
+  "audio/ogg",
+  "audio/wav",
+  "audio/webm",
+  "audio/aac",
+  "audio/m4a",
+  "audio/m4b",
+  "audio/webm;codecs=opus"
 ] as const
 
 export const isAllowedMimeType = (mimeType: string): boolean => {
