@@ -59,7 +59,14 @@ export default function ReportLandingClient({ orgName, channelSlug, categories, 
             <button onClick={() => setStarted(true)} className="inline-flex rounded bg-primary px-4 py-2 text-primary-foreground">
               Create New Report
             </button>
-            <a href={`/r/${""}`} onClick={(e)=>{e.preventDefault(); window.location.href="/r/"}} className="inline-flex rounded border px-4 py-2 text-sm">
+            <a
+              href={`/reporting-channel/${encodeURIComponent(channelSlug)}/checkcase`}
+              onClick={(e) => {
+                e.preventDefault()
+                window.location.href = `/reporting-channel/${encodeURIComponent(channelSlug)}/checkcase`
+              }}
+              className="inline-flex rounded border px-4 py-2 text-sm"
+            >
               Check Case
             </a>
           </div>

@@ -1,6 +1,7 @@
 import { auth } from "@clerk/nextjs/server"
 import { getDbOrgIdForClerkOrg } from "@/src/server/orgs"
 import { getStatistics } from "@/src/server/services/stats"
+import ChartsClient from "./stats-client"
 
 export default async function StatisticsPage() {
   const { orgId: clerkOrgId } = await auth()
@@ -28,20 +29,12 @@ export default async function StatisticsPage() {
       {/* 2) Volume & trend */}
       <section className="space-y-3">
         <h2 className="text-base font-semibold">Volume & trend</h2>
-        <ChartContainer title="Cases by month (stacked by category)">
-          <pre className="text-xs overflow-x-auto">{JSON.stringify(vol.byMonthCategory.slice(0, 50), null, 2)}</pre>
-        </ChartContainer>
-        <div className="grid gap-3 lg:grid-cols-2">
-          <ChartContainer title="Seasonality heatmap (month × weekday)">
-            <pre className="text-xs overflow-x-auto">{JSON.stringify(vol.seasonality.slice(0, 50), null, 2)}</pre>
-          </ChartContainer>
-          <ChartContainer title="Rolling 28-day new cases (7-day MA)">
-            <pre className="text-xs overflow-x-auto">{JSON.stringify(vol.rolling28.slice(0, 50), null, 2)}</pre>
-          </ChartContainer>
-        </div>
-        <ChartContainer title="Pareto (categories sorted by volume; 80/20)">
-          <pre className="text-xs overflow-x-auto">{JSON.stringify(vol.pareto.slice(0, 50), null, 2)}</pre>
-        </ChartContainer>
+        <ChartsClient
+          kpis={k}
+          volume={vol}
+          lifecycle={life}
+          categoryRisk={cat}
+        />
       </section>
 
       {/* 3) Case lifecycle & speed */}

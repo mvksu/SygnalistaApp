@@ -36,14 +36,14 @@ export default async function ReportingChannelDetail({ params }: { params: { id:
         <div className="grid gap-6 lg:grid-cols-2">
                 <div className="rounded border p-4 space-y-3">
                     <div className="aspect-[4/3] w-full overflow-hidden rounded border">
-                      <iframe src={`/report/${channel.slug}`} className="h-full w-full" />
+                      <iframe src={`/reporting-channel/${channel.slug}`} className="h-full w-full" />
                     </div>
                         <div className="flex items-center justify-between text-sm">
                             <div className="flex items-center gap-2 text-muted-foreground">
                                 <LinkIcon className="h-4 w-4" />
                                 <span>Open page</span>
                             </div>
-                            <Link href={`/report/${channel.slug}`} className="inline-flex items-center gap-1 rounded border px-2 py-1">
+                            <Link href={`/reporting-channel/${channel.slug}`} className="inline-flex items-center gap-1 rounded border px-2 py-1">
                                 <ExternalLink className="h-4 w-4" />
                                 <span>Open page</span>
                             </Link>

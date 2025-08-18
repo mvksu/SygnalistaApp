@@ -1,34 +1,33 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
-import { generatePresignedUploadUrl } from "@/lib/storage/s3"
+import { generatePresignedUploadUrl } from "@/lib/storage/supabase"
 import { presignedUploadSchema } from "@/lib/validation/upload"
 import { db } from "@/db"
 import { organizations } from "@/db/schema/organizations"
+import { reportingChannels } from "@/db/schema/reportingChannels"
 import { eq } from "drizzle-orm"
 
 export async function POST(request: NextRequest) {
   try {
-    // Get authenticated user and organization
-    const { userId, orgId } = await auth()
-    
-    if (!userId) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
-    }
+    // Resolve organization context
+    const url = new URL(request.url)
+    const channelSlug = request.headers.get("x-channel-slug") || url.searchParams.get("channel") || undefined
+    let resolvedOrgId: string | null = null
 
-    if (!orgId) {
-      return NextResponse.json(
-        { error: "Organization context required" },
-        { status: 400 }
-      )
+    const { userId, orgId } = await auth()
+    if (userId && orgId) {
+      const { getDbOrgIdForClerkOrg } = await import("@/src/server/orgs")
+      resolvedOrgId = await getDbOrgIdForClerkOrg(orgId)
+    } else if (channelSlug) {
+      const channel = await db.query.reportingChannels.findFirst({ where: eq(reportingChannels.slug, channelSlug) })
+      if (!channel) return NextResponse.json({ error: "Invalid channel" }, { status: 400 })
+      resolvedOrgId = channel.orgId
+    } else {
+      return NextResponse.json({ error: "Organization context required" }, { status: 400 })
     }
 
     // Verify organization exists
-    const org = await db.query.organizations.findFirst({
-      where: eq(organizations.id, orgId)
-    })
+    const org = await db.query.organizations.findFirst({ where: eq(organizations.id, resolvedOrgId) })
 
     if (!org) {
       return NextResponse.json(
@@ -45,7 +44,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { 
           error: "Invalid request data",
-          details: validationResult.error.errors
+          details: validationResult.error.issues
         },
         { status: 400 }
       )
@@ -54,26 +53,24 @@ export async function POST(request: NextRequest) {
     const { filename, contentType, size, checksum, reportId, messageId } = validationResult.data
 
     // Generate presigned upload URL
-    const { uploadUrl, storageKey } = await generatePresignedUploadUrl({
+    const { uploadUrl, storageKey, token } = await generatePresignedUploadUrl({
       filename,
       contentType,
       size,
       checksum,
-      orgId,
+      orgId: resolvedOrgId!,
       reportId,
       messageId,
     })
 
-    // Return the presigned URL and storage key
+    // Return the signed upload details (Supabase)
     return NextResponse.json({
       uploadUrl,
       storageKey,
       expiresIn: 3600, // 1 hour
-      fields: {
-        key: storageKey,
-        "Content-Type": contentType,
-        checksum,
-      }
+      // Supabase signed upload also requires a token alongside the URL
+      // Clients should use supabase-js uploadToSignedUrl, or POST with this token header
+      token,
     })
 
   } catch (error) {

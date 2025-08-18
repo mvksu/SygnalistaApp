@@ -35,7 +35,8 @@ export default function CheckCasePage() {
         <Button
           onClick={() => {
             if (!receipt) return
-            window.location.href = `/r/${encodeURIComponent(receipt)}?caseKey=${encodeURIComponent(passphrase)}`
+            // We cannot know slug here; keep legacy page as a simple receipt-only redirect target if needed
+            window.location.href = `/reporting-channel/unknown/checkcase/${encodeURIComponent(receipt)}?caseKey=${encodeURIComponent(passphrase)}`
           }}
         >
           Open

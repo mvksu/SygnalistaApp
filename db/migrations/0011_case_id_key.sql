@@ -6,3 +6,5 @@ ALTER TABLE "reports" RENAME COLUMN "passphrase_hash" TO "case_key_hash";
 -- If your earlier migrations created an explicit index name, ensure it's updated accordingly.
 
 
+
+

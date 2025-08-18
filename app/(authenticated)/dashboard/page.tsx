@@ -1,7 +1,6 @@
 import { auth, currentUser } from "@clerk/nextjs/server"
 import { getStatistics } from "@/src/server/services/stats"
 // Removed broken import
-import { ActionCard } from "@/components/ui/action-card"
 import { Palette, Shield, UserPlus, Play, Lock, Link } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import React from "react"

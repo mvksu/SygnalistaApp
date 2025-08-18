@@ -7,6 +7,14 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { Button as UIButton } from "@/components/ui/button"
+import { getBrowserSupabase } from "@/lib/supabase/client"
+
+async function sha256(file: File): Promise<string> {
+  const buf = await file.arrayBuffer()
+  const digest = await crypto.subtle.digest("SHA-256", buf)
+  const bytes = new Uint8Array(digest)
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("")
+}
 
 type Props = {
   categories: { id: string; name: string }[]
@@ -74,6 +82,50 @@ export default function ReportForm({ categories, onSubmit, channelSlug }: Props)
     }
 
     try {
+      // If we have files, presign and upload them first to get storageKeys
+      let attachmentsForSubmit = values.attachments
+      if (files.length > 0) {
+        const uploaded: typeof attachmentsForSubmit = []
+        const supabase = getBrowserSupabase()
+        for (const f of files) {
+          const checksum = await sha256(f)
+          // Request signed upload (public intake uses channel header/query)
+          const presignRes = await fetch(`/api/files/presign?channel=${encodeURIComponent(channelSlug || "")}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-channel-slug": channelSlug || "" },
+            body: JSON.stringify({
+              filename: f.name,
+              contentType: f.type || "application/octet-stream",
+              size: f.size,
+              checksum,
+            })
+          })
+          if (!presignRes.ok) {
+            console.error("presign failed", await presignRes.text())
+            throw new Error("Upload presign failed")
+          }
+          const { uploadUrl, storageKey, token } = await presignRes.json()
+
+          // Upload using supabase-js helper
+          const { error: uploadErr } = await supabase
+            .storage
+            .from(process.env.NEXT_PUBLIC_SUPABASE_BUCKET || "uploads")
+            .uploadToSignedUrl(storageKey, token, f, { contentType: f.type || "application/octet-stream" })
+          if (uploadErr) {
+            console.error("upload failed", uploadErr)
+            throw new Error("Upload failed")
+          }
+
+          uploaded.push({
+            filename: f.name,
+            size: f.size,
+            contentType: f.type || "application/octet-stream",
+            checksum,
+            storageKey,
+          } as any)
+        }
+        attachmentsForSubmit = uploaded
+      }
       if (onSubmit) {
         await onSubmit(parsed.data)
       } else {
@@ -81,14 +133,14 @@ export default function ReportForm({ categories, onSubmit, channelSlug }: Props)
         const res = await fetch(`/api/reports?channel=${encodeURIComponent(channelSlug || "")}` , {
           method: "POST",
           headers: { "Content-Type": "application/json", "x-channel-slug": channelSlug || "" },
-          body: JSON.stringify(parsed.data)
+          body: JSON.stringify({ ...parsed.data, attachments: attachmentsForSubmit })
         })
         if (!res.ok) {
           console.error("Submission failed", await res.text())
           throw new Error("Submission failed")
         }
         const data = await res.json()
-        window.location.href = `/receipt/${data.id}?caseKey=${encodeURIComponent(data.caseKey || data.passphrase || "")}`
+        window.location.href = `/receipt/${encodeURIComponent(data.caseId || data.receiptCode || "")}?caseKey=${encodeURIComponent(data.caseKey || data.passphrase || "")}`
       }
     } finally {
       setSubmitting(false)

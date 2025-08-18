@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/db"
 import { reports } from "@/db/schema/reports"
 import { reportMessages } from "@/db/schema/reportMessages"
+import { attachments } from "@/db/schema/attachments"
 import { eq } from "drizzle-orm"
 import { reportIntakeSchema } from "@/lib/validation/report"
+import { isAllowedMimeType, getFileSizeLimit } from "@/lib/validation/upload"
 import { verifyCaptcha } from "@/lib/captcha"
 import { generateCaseId, generateCaseKey, hashCaseKey } from "@/lib/ids"
 import { encryptField } from "@/lib/crypto/encryption"
@@ -48,7 +50,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid data", details: parsed.error.issues }, { status: 400 })
     }
 
-    const { categoryId, body: messageBody, anonymous, contact, captchaToken } = parsed.data
+    const { categoryId, body: messageBody, anonymous, contact, captchaToken, attachments: uploaded } = parsed.data
 
     // Rate limiting should be applied by a middleware in production; optionally add lightweight guard here
     const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || undefined
@@ -85,18 +87,83 @@ export async function POST(request: NextRequest) {
 
     // First message saved encrypted under org key
     const firstMessageEncrypted = encryptField(orgId!, messageBody)
-    await db.insert(reportMessages).values({
-      reportId: inserted.id,
-      sender: "REPORTER",
-      bodyEncrypted: JSON.stringify(firstMessageEncrypted),
-      createdAt: now,
-    })
+    const [firstMessage] = await db
+      .insert(reportMessages)
+      .values({
+        reportId: inserted.id,
+        sender: "REPORTER",
+        bodyEncrypted: JSON.stringify(firstMessageEncrypted),
+        createdAt: now,
+      })
+      .returning()
+
+    // If attachments were provided, validate and persist rows
+    if (uploaded && uploaded.length > 0) {
+      const rowsToInsert: Array<{
+        reportId: string
+        messageId: string
+        storageKey: string
+        filename: string
+        size: number
+        contentHash: string
+      }> = []
+
+      for (const file of uploaded) {
+        // Require storageKey and checksum for DB record integrity
+        if (!file.storageKey || !file.checksum) {
+          return NextResponse.json(
+            { error: "Attachment missing storageKey or checksum" },
+            { status: 400 }
+          )
+        }
+
+        // Enforce tenancy and path sanity: must live under this org
+        const expectedOrgPrefix = `orgs/${orgId}/`
+        if (!file.storageKey.startsWith(expectedOrgPrefix)) {
+          return NextResponse.json(
+            { error: "Attachment does not belong to this organization" },
+            { status: 400 }
+          )
+        }
+
+        // Validate MIME and size against server policy
+        if (!isAllowedMimeType(file.contentType)) {
+          return NextResponse.json(
+            { error: `File type ${file.contentType} is not allowed` },
+            { status: 400 }
+          )
+        }
+        const limit = getFileSizeLimit(file.contentType)
+        if (file.size > limit) {
+          return NextResponse.json(
+            { error: `File size ${file.size} exceeds limit ${limit} for ${file.contentType}` },
+            { status: 400 }
+          )
+        }
+
+        rowsToInsert.push({
+          reportId: inserted.id,
+          messageId: firstMessage.id,
+          storageKey: file.storageKey,
+          filename: file.filename,
+          size: file.size,
+          contentHash: file.checksum,
+          // avStatus defaults to PENDING
+        })
+      }
+
+      if (rowsToInsert.length > 0) {
+        await db.insert(attachments).values(rowsToInsert as any)
+      }
+    }
 
     return NextResponse.json({
       id: inserted.id,
       caseId: receipt,
       caseKey: passphrase, // returned ONCE; client must show securely and not store
       feedbackDueAt: inserted.feedbackDueAt,
+      // include message id for client threading if needed
+      messageId: firstMessage.id,
     })
   } catch (err: any) {
     console.error("Create report error", err)

@@ -78,6 +78,13 @@
       "when": 1755252171856,
       "tag": "0010_noisy_the_hood",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1755519221819,
+      "tag": "0011_loose_vivisector",
+      "breakpoints": true
     }
   ]
 }

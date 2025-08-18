@@ -99,14 +99,14 @@
   - **Step Dependencies**: Step 6–9
   - **User Instructions**: Provide `APP_MASTER_KEY` (32 bytes base64). Rotate in prod via KMS later.
 
-<!-- - [ ] Step 11: S3 storage client + upload flow
-  - **Task**: Add S3/R2 client and presigned upload API. Limit file sizes; compute content hash.
+- [x] Step 11: Storage client + upload flow (Supabase Storage)
+  - **Task**: Add Supabase Storage client and presigned upload API. Limit file sizes; compute content hash.
   - **Files**:
-    - `src/server/storage/s3.ts`: client and presign
+    - `lib/storage/supabase.ts`: client and presign
     - `app/api/files/presign/route.ts`: POST for presigned URL
-    - `src/lib/validation/upload.ts`: zod schema for file meta
+    - `lib/validation/upload.ts`: zod schema for file meta
   - **Step Dependencies**: Step 7–8
-  - **User Instructions**: Create S3/R2 bucket; set `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`. -->
+  - **User Instructions**: Create Supabase bucket; set `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_STORAGE_BUCKET`.
 
 <!-- - [ ] Step 12: AV scanning hook (stub)
   - **Task**: Add AV status to attachments and a scan-callback route (to be triggered by your AV worker).

@@ -70,8 +70,16 @@ function percentile(values: number[], p: number): number {
   return sorted[idx]
 }
 
-export async function getStatistics(orgId: string): Promise<Statistics> {
+export async function getStatistics(
+  orgId: string,
+  opts?: { from?: Date; to?: Date; categories?: string[] }
+): Promise<Statistics> {
   const now = new Date()
+  const whereClauses: any[] = [eq(reports.orgId, orgId)]
+  if (opts?.from) whereClauses.push(gte(reports.createdAt, opts.from))
+  if (opts?.to) whereClauses.push(lte(reports.createdAt, opts.to))
+  if (opts?.categories && opts.categories.length) whereClauses.push(inArray(reports.categoryId, opts.categories as any))
+
   const allReports = await db
     .select({
       id: reports.id,
@@ -83,7 +91,7 @@ export async function getStatistics(orgId: string): Promise<Statistics> {
       reporterMode: reports.reporterMode,
     })
     .from(reports)
-    .where(eq(reports.orgId, orgId))
+    .where(and(...whereClauses))
 
   const reportIds = allReports.map(r => r.id)
   const msgs = reportIds.length
