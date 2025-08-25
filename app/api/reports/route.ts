@@ -5,14 +5,15 @@ import { orgMembers, orgRole } from "@/db/schema/orgMembers"
 import { users } from "@/db/schema/users"
 import { reportMessages } from "@/db/schema/reportMessages"
 import { attachments } from "@/db/schema/attachments"
-import { eq } from "drizzle-orm"
+import { eq, and } from "drizzle-orm"
 import { reportIntakeSchema } from "@/lib/validation/report"
 import { isAllowedMimeType, getFileSizeLimit } from "@/lib/validation/upload"
-import { verifyCaptcha } from "@/lib/captcha"
+import { verifyRecaptchaV3 } from "@/lib/captcha"
 import { generateCaseId, generateCaseKey, hashCaseKey } from "@/lib/ids"
 import { encryptField } from "@/lib/crypto/encryption"
 import { auth } from "@clerk/nextjs/server"
 import { reportingChannels } from "@/db/schema/reportingChannels"
+import { organizations } from "@/db/schema/organizations"
 
 // Compute feedback due (3 months) and initial SLA windows server-side
 function addMonths(date: Date, months: number): Date {
@@ -57,12 +58,13 @@ export async function POST(request: NextRequest) {
     // Rate limiting should be applied by a middleware in production; optionally add lightweight guard here
     const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || undefined
 
-    const captcha = await verifyCaptcha(captchaToken, ip)
-    if (!captcha.success) {
-      return NextResponse.json({ error: "CAPTCHA failed", details: captcha.error }, { status: 400 })
-    }
+    // const captcha = await verifyRecaptchaV3(captchaToken, ip, { expectedAction: "report_submit", minScore: 0.3 })
+    // if (!captcha.success) {
+    //   return NextResponse.json({ error: "CAPTCHA failed", details: captcha.error }, { status: 400 })
+    // }
 
     const now = new Date()
+    const org = await db.query.organizations.findFirst({ where: eq(organizations.id, orgId!) })
     const receipt = generateCaseId()
     const passphrase = generateCaseKey()
     const passphraseHash = hashCaseKey(passphrase)
@@ -84,10 +86,9 @@ export async function POST(request: NextRequest) {
         subject: (body as any)?.subject || null,
         status: "OPEN",
         createdAt: now,
-        feedbackDueAt: addMonths(now, 3),
+        feedbackDueAt: addMonths(now, ((org?.feedbackMonths as number) ?? 3)),
         reporterMode,
         reporterContactEncrypted: contactEncrypted ? JSON.stringify(contactEncrypted) : null,
-        assigneeId: defaultAssignee,
         caseId: receipt,
         caseKeyHash: passphraseHash,
       })

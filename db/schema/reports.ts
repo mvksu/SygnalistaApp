@@ -9,7 +9,10 @@ export const reportStatus = pgEnum("report_status", [
   "ACKNOWLEDGED",
   "IN_PROGRESS",
   "FEEDBACK_GIVEN",
-  "CLOSED"
+  "CLOSED",
+  "RESOLVED",
+  "NEW",
+  "ACTIVE"
 ])
 
 export const reports = pgTable("reports", {
@@ -27,7 +30,6 @@ export const reports = pgTable("reports", {
   feedbackDueAt: timestamp("feedback_due_at"),
   reporterMode: reporterMode("reporter_mode").default("ANON").notNull(),
   reporterContactEncrypted: text("reporter_contact_encrypted"),
-  assigneeId: uuid("assignee_id").references(() => users.id, { onDelete: "set null" }),
   caseId: text("case_id").notNull().unique(),
   caseKeyHash: text("case_key_hash").notNull()
 })

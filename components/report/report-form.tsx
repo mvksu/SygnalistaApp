@@ -2,32 +2,92 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { z } from "zod"
+import Script from "next/script"
 import { reportIntakeSchema, type ReportIntake } from "@/lib/validation/report"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { Button as UIButton } from "@/components/ui/button"
 import { getBrowserSupabase } from "@/lib/supabase/client"
-import { Captcha } from "@/components/captcha"
+declare global {
+  interface Window {
+    grecaptcha?: {
+      ready: (cb: () => void) => void
+      execute: (siteKey: string, options: { action: string }) => Promise<string>
+    }
+  }
+}
 
 async function sha256(file: File): Promise<string> {
   const buf = await file.arrayBuffer()
   const digest = await crypto.subtle.digest("SHA-256", buf)
   const bytes = new Uint8Array(digest)
-  return Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("")
+  return Array.from(bytes)
+    .map(b => b.toString(16).padStart(2, "0"))
+    .join("")
 }
 
 type Props = {
   categories: { id: string; name: string }[]
-  captchaProvider?: "turnstile" | "hcaptcha" | "recaptcha"
   captchaSiteKey: string
   onSubmit?: (data: ReportIntake) => Promise<void>
   channelSlug?: string
 }
 
-export default function ReportForm({ categories, onSubmit, channelSlug, captchaProvider = (process.env.NEXT_PUBLIC_CAPTCHA_PROVIDER as any) || "hcaptcha", captchaSiteKey = "" }: Props) {
+export default function ReportForm({
+  categories,
+  onSubmit,
+  channelSlug,
+  captchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || ""
+}: Props) {
   type MediaRecorderConstructor = typeof MediaRecorder & {
     isTypeSupported?: (type: string) => boolean
+  }
+  // reCAPTCHA v3 script loader with timeout fallback
+  const recaptchaReadyRef = useRef<Promise<void> | null>(null)
+  const disableRecaptcha = (process.env.NEXT_PUBLIC_DISABLE_RECAPTCHA as string) === "true"
+  function ensureRecaptchaReady(): Promise<void> {
+    if (disableRecaptcha || !captchaSiteKey) return Promise.resolve()
+    if (!recaptchaReadyRef.current) {
+      recaptchaReadyRef.current = new Promise<void>(resolve => {
+        // If API already present, wait for ready
+        if (window.grecaptcha && typeof window.grecaptcha.ready === "function") {
+          window.grecaptcha.ready(() => resolve())
+          return
+        }
+        // Poll for availability (avoids dynamic script injection under strict CSP)
+        const started = Date.now()
+        const interval = window.setInterval(() => {
+          if (window.grecaptcha && typeof window.grecaptcha.ready === "function") {
+            window.clearInterval(interval)
+            window.grecaptcha.ready(() => resolve())
+          } else if (Date.now() - started > 5000) {
+            window.clearInterval(interval)
+            resolve()
+          }
+        }, 100)
+      })
+    }
+    return recaptchaReadyRef.current
+  }
+
+  async function getRecaptchaToken(): Promise<string> {
+    if (disableRecaptcha || !captchaSiteKey) return "dev-token"
+    const timeout = new Promise<string>(resolve => {
+      window.setTimeout(() => resolve(""), 5000)
+    })
+    const tokenPromise = (async () => {
+      await ensureRecaptchaReady()
+      if (!window.grecaptcha) return ""
+      try {
+        const token = await window.grecaptcha.execute(captchaSiteKey, { action: "report_submit" })
+        return token || ""
+      } catch {
+        return ""
+      }
+    })()
+    const result = await Promise.race([timeout, tokenPromise])
+    return result
   }
 
   const [values, setValues] = useState<ReportIntake>({
@@ -36,7 +96,7 @@ export default function ReportForm({ categories, onSubmit, channelSlug, captchaP
     anonymous: true,
     contact: undefined,
     attachments: [],
-    captchaToken: captchaSiteKey ? "" : "dev-token",
+    captchaToken: captchaSiteKey ? "" : "dev-token"
   })
   const [subject, setSubject] = useState("")
   const [files, setFiles] = useState<File[]>([])
@@ -62,15 +122,21 @@ export default function ReportForm({ categories, onSubmit, channelSlug, captchaP
 
   const validator = useMemo(() => reportIntakeSchema, [])
 
-  function setField<K extends keyof ReportIntake>(key: K, value: ReportIntake[K]) {
-    setValues((v) => ({ ...v, [key]: value }))
+  function setField<K extends keyof ReportIntake>(
+    key: K,
+    value: ReportIntake[K]
+  ) {
+    setValues(v => ({ ...v, [key]: value }))
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSubmitting(true)
     setErrors({})
+    const token = await getRecaptchaToken()
     const parsed = validator.safeParse(values)
+  
+
     if (!parsed.success) {
       const fieldErrors: Record<string, string> = {}
       for (const issue of parsed.error.issues) {
@@ -82,6 +148,14 @@ export default function ReportForm({ categories, onSubmit, channelSlug, captchaP
       return
     }
 
+    // if (!parsed.success) {
+    //   setErrors({
+    //     captchaToken: "Captcha could not be verified. Please try again."
+    //   })
+    //   setSubmitting(false)
+    //   return
+    // }
+
     try {
       // If we have files, presign and upload them first to get storageKeys
       let attachmentsForSubmit = values.attachments
@@ -91,16 +165,22 @@ export default function ReportForm({ categories, onSubmit, channelSlug, captchaP
         for (const f of files) {
           const checksum = await sha256(f)
           // Request signed upload (public intake uses channel header/query)
-          const presignRes = await fetch(`/api/files/presign?channel=${encodeURIComponent(channelSlug || "")}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "x-channel-slug": channelSlug || "" },
-            body: JSON.stringify({
-              filename: f.name,
-              contentType: f.type || "application/octet-stream",
-              size: f.size,
-              checksum,
-            })
-          })
+          const presignRes = await fetch(
+            `/api/files/presign?channel=${encodeURIComponent(channelSlug || "")}`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "x-channel-slug": channelSlug || ""
+              },
+              body: JSON.stringify({
+                filename: f.name,
+                contentType: f.type || "application/octet-stream",
+                size: f.size,
+                checksum
+              })
+            }
+          )
           if (!presignRes.ok) {
             console.error("presign failed", await presignRes.text())
             throw new Error("Upload presign failed")
@@ -108,10 +188,11 @@ export default function ReportForm({ categories, onSubmit, channelSlug, captchaP
           const { uploadUrl, storageKey, token } = await presignRes.json()
 
           // Upload using supabase-js helper
-          const { error: uploadErr } = await supabase
-            .storage
+          const { error: uploadErr } = await supabase.storage
             .from(process.env.NEXT_PUBLIC_SUPABASE_BUCKET || "uploads")
-            .uploadToSignedUrl(storageKey, token, f, { contentType: f.type || "application/octet-stream" })
+            .uploadToSignedUrl(storageKey, token, f, {
+              contentType: f.type || "application/octet-stream"
+            })
           if (uploadErr) {
             console.error("upload failed", uploadErr)
             throw new Error("Upload failed")
@@ -122,20 +203,30 @@ export default function ReportForm({ categories, onSubmit, channelSlug, captchaP
             size: f.size,
             contentType: f.type || "application/octet-stream",
             checksum,
-            storageKey,
-          } as any)
+            storageKey
+          })
         }
         attachmentsForSubmit = uploaded
       }
       if (onSubmit) {
-        await onSubmit(parsed.data)
+        await onSubmit({ ...parsed.data, attachments: attachmentsForSubmit })
       } else {
         // TODO: send subject and uploaded files (presigned flow) as needed
-        const res = await fetch(`/api/reports?channel=${encodeURIComponent(channelSlug || "")}` , {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "x-channel-slug": channelSlug || "" },
-          body: JSON.stringify({ ...parsed.data, subject, attachments: attachmentsForSubmit })
-        })
+        const res = await fetch(
+          `/api/reports?channel=${encodeURIComponent(channelSlug || "")}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-channel-slug": channelSlug || ""
+            },
+            body: JSON.stringify({
+              ...parsed.data,
+              subject,
+              attachments: attachmentsForSubmit
+            })
+          }
+        )
         if (!res.ok) {
           console.error("Submission failed", await res.text())
           throw new Error("Submission failed")
@@ -151,7 +242,10 @@ export default function ReportForm({ categories, onSubmit, channelSlug, captchaP
   // Clean up media resources on unmount
   useEffect(() => {
     return () => {
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      if (
+        mediaRecorderRef.current &&
+        mediaRecorderRef.current.state !== "inactive"
+      ) {
         mediaRecorderRef.current.stop()
       }
       if (audioStreamRef.current) {
@@ -183,14 +277,23 @@ export default function ReportForm({ categories, onSubmit, channelSlug, captchaP
       ]
       let mimeType: string | undefined
       for (const t of preferredTypes) {
-        const MR: MediaRecorderConstructor | undefined = (window as unknown as { MediaRecorder?: MediaRecorderConstructor }).MediaRecorder
-        if (MR && typeof MR.isTypeSupported === "function" && MR.isTypeSupported!(t)) {
+        const MR: MediaRecorderConstructor | undefined = (
+          window as unknown as { MediaRecorder?: MediaRecorderConstructor }
+        ).MediaRecorder
+        if (
+          MR &&
+          typeof MR.isTypeSupported === "function" &&
+          MR.isTypeSupported!(t)
+        ) {
           mimeType = t
           break
         }
       }
 
-      const mr: MediaRecorder = new MediaRecorder(stream, mimeType ? ({ mimeType } as MediaRecorderOptions) : undefined)
+      const mr: MediaRecorder = new MediaRecorder(
+        stream,
+        mimeType ? ({ mimeType } as MediaRecorderOptions) : undefined
+      )
       mediaRecorderRef.current = mr
 
       mr.ondataavailable = ev => {
@@ -199,7 +302,9 @@ export default function ReportForm({ categories, onSubmit, channelSlug, captchaP
         }
       }
       mr.onstop = async () => {
-        const blob = new Blob(chunksRef.current, { type: mr.mimeType || "audio/webm" })
+        const blob = new Blob(chunksRef.current, {
+          type: mr.mimeType || "audio/webm"
+        })
         const fileName = `voice-message-${Date.now()}.${blob.type.includes("mp4") ? "m4a" : "webm"}`
         const file = new File([blob], fileName, { type: blob.type })
 
@@ -208,7 +313,11 @@ export default function ReportForm({ categories, onSubmit, channelSlug, captchaP
           const next = [...prev, file]
           setValues(v => ({
             ...v,
-            attachments: next.map(f => ({ filename: f.name, size: f.size, contentType: f.type }))
+            attachments: next.map(f => ({
+              filename: f.name,
+              size: f.size,
+              contentType: f.type
+            }))
           }))
           return next
         })
@@ -228,8 +337,12 @@ export default function ReportForm({ categories, onSubmit, channelSlug, captchaP
       }
 
       // Simple level meter using WebAudio analyser
-      const AnyWindow = window as unknown as { AudioContext: typeof AudioContext; webkitAudioContext?: typeof AudioContext }
-      audioContextRef.current = new (AnyWindow.AudioContext || AnyWindow.webkitAudioContext!)()
+      const AnyWindow = window as unknown as {
+        AudioContext: typeof AudioContext
+        webkitAudioContext?: typeof AudioContext
+      }
+      audioContextRef.current = new (AnyWindow.AudioContext ||
+        AnyWindow.webkitAudioContext!)()
       const source = audioContextRef.current.createMediaStreamSource(stream)
       const analyser = audioContextRef.current.createAnalyser()
       analyser.fftSize = 256
@@ -260,7 +373,8 @@ export default function ReportForm({ categories, onSubmit, channelSlug, captchaP
         })
       }, 1000)
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Microphone access denied"
+      const message =
+        err instanceof Error ? err.message : "Microphone access denied"
       setRecordError(message)
       setIsRecording(false)
     }
@@ -268,7 +382,10 @@ export default function ReportForm({ categories, onSubmit, channelSlug, captchaP
 
   function stopRecording(): void {
     try {
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      if (
+        mediaRecorderRef.current &&
+        mediaRecorderRef.current.state !== "inactive"
+      ) {
         mediaRecorderRef.current.stop()
       }
     } finally {
@@ -282,7 +399,9 @@ export default function ReportForm({ categories, onSubmit, channelSlug, captchaP
     setAudioUrl(null)
     setValues(v => ({
       ...v,
-      attachments: v.attachments.filter(a => !a.filename.startsWith("voice-message-"))
+      attachments: v.attachments.filter(
+        a => !a.filename.startsWith("voice-message-")
+      )
     }))
     setFiles(prev => prev.filter(f => !f.name.startsWith("voice-message-")))
   }
@@ -292,6 +411,13 @@ export default function ReportForm({ categories, onSubmit, channelSlug, captchaP
       onSubmit={handleSubmit}
       className="border-secondary rounded-2 space-y-4 border-2 p-8"
     >
+      {/* {!disableRecaptcha && captchaSiteKey ? (
+        <Script
+          id="recaptcha-v3-script"
+          src={`https://www.google.com/recaptcha/api.js?render=${encodeURIComponent(captchaSiteKey)}`}
+          strategy="afterInteractive"
+        />
+      ) : null} */}
       <div>
         <h1 className="text-2xl font-bold">Report an issue</h1>
         <p className="text-muted-foreground text-sm">
@@ -556,24 +682,16 @@ export default function ReportForm({ categories, onSubmit, channelSlug, captchaP
         </div>
       )}
 
-      {/* CAPTCHA */}
-      <div className="py-2">
-        <Captcha
-          provider={captchaProvider}
-          siteKey={captchaSiteKey}
-          onVerify={token => setField("captchaToken", token)}
-          theme="light"
-        />
-        {errors["captchaToken"] && (
-          <p className="text-sm text-red-600">{errors["captchaToken"]}</p>
-        )}
-      </div>
+      {/* reCAPTCHA v3 runs on submit. No widget to render. */}
+      {errors["captchaToken"] && (
+        <p className="text-sm text-red-600">{errors["captchaToken"]}</p>
+      )}
 
       <Button type="submit" disabled={submitting}>
         {submitting ? "Submitting..." : "Submit report"}
       </Button>
 
-      <div className="mt-4 border-t border-secondary pt-4">
+      <div className="border-secondary mt-4 border-t pt-4">
         <span className="text-muted-foreground block text-center text-xs">
           All communications are encrypted.
         </span>
@@ -581,5 +699,3 @@ export default function ReportForm({ categories, onSubmit, channelSlug, captchaP
     </form>
   )
 }
-
-

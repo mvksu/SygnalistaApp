@@ -17,11 +17,24 @@ export async function POST(req: NextRequest) {
   try {
     const { clerkOrgId, dbOrgId } = await getDbOrgId()
     if (!clerkOrgId || !dbOrgId) return NextResponse.json({ error: "No organization context" }, { status: 400 })
+    const { userId } = await auth()
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     const body = await req.json()
     const email = String(body?.email || "").trim()
     if (!email) return NextResponse.json({ error: "Email required" }, { status: 400 })
 
-    const cc = await clerkClient()
+    // Ensure requester is ADMIN and not deleting self
+    const currentDbUser = await db.query.users.findFirst({ where: eq(users.clerkId, userId) })
+    if (!currentDbUser) return NextResponse.json({ error: "Current user not found" }, { status: 403 })
+    const currentMembership = await db.query.orgMembers.findFirst({ where: and(eq(orgMembers.orgId, dbOrgId), eq(orgMembers.userId, currentDbUser.id)) })
+    if (!currentMembership || currentMembership.role !== "ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+    if (currentDbUser.email && currentDbUser.email.toLowerCase() === email.toLowerCase()) {
+      return NextResponse.json({ error: "You cannot remove yourself" }, { status: 400 })
+    }
+
+    const cc = clerkClient
     const user = (await cc.users.getUserList({ emailAddress: [email] })).data?.[0]
     if (!user) return NextResponse.json({ error: "User not found in Clerk" }, { status: 404 })
 
@@ -42,5 +55,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: e?.message || "Failed" }, { status: 500 })
   }
 }
+
 
 

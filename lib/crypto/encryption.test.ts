@@ -1,3 +1,27 @@
+import { describe, expect, it, beforeAll } from "vitest"
+import { encryptField, decryptField } from "./encryption"
+
+describe("encryption", () => {
+  beforeAll(() => {
+    process.env.APP_MASTER_KEY = Buffer.from(Array(32).fill(7)).toString("base64")
+  })
+  it("encrypts and decrypts roundtrip with same org and version", () => {
+    const orgId = "org_test"
+    const plaintext = "hello world"
+    const enc = encryptField(orgId, plaintext)
+    const dec = decryptField(orgId, enc)
+    expect(dec.toString("utf8")).toBe(plaintext)
+  })
+
+  it("supports AAD option", () => {
+    const orgId = "org_test"
+    const aad = Buffer.from("context")
+    const enc = encryptField(orgId, "msg", { aad })
+    const dec = decryptField(orgId, enc)
+    expect(dec.toString("utf8")).toBe("msg")
+  })
+})
+
 import { describe, it, expect } from "vitest"
 import { encryptField, decryptField } from "./encryption"
 import { generateMasterKeyB64 } from "./keys"

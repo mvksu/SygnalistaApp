@@ -65,7 +65,7 @@
   - **User Instructions**: Run `npm run db:migrate`.
 
 - [x] Step 7: Reporting schema — categories & reports
-  - **Task**: Define `report_categories`, `reports` (with fields for anonymous mode, receipt code, passphrase hash, due dates).
+  - **Task**: Define `report_categories`, `reports` (with fields for anonymous mode, case code, passphrase hash, due dates).
   - **Files**:
     - `src/server/db/schema/reportCategories.ts`
     - `src/server/db/schema/reports.ts`
@@ -135,17 +135,17 @@
   - **Step Dependencies**: Steps 7–13
   - **User Instructions**: None.
 
-- [x] Step 15: Create report API + receipt generation
-  - **Task**: Implement `POST /api/reports` to create report, encrypt sensitive fields, compute due dates, generate `receipt_code` & `passphrase`.
+- [x] Step 15: Create report API + case generation
+  - **Task**: Implement `POST /api/reports` to create report, encrypt sensitive fields, compute due dates, generate `case_code` & `passphrase`.
   - **Files**:
     - `app/api/reports/route.ts`
     - `src/server/services/reports.ts`: creation logic
-    - `src/lib/ids.ts`: nanoid/ulid helpers for receipt
+    - `src/lib/ids.ts`: nanoid/ulid helpers for case
   - **Step Dependencies**: Step 10, Step 14
   - **User Instructions**: None.
 
-- [x] Step 16: Receipt modal + printable view
-  - **Task**: After submission, show one-time modal (receipt + passphrase) with option to print/save securely.
+- [x] Step 16: case modal + printable view
+  - **Task**: After submission, show one-time modal (case + passphrase) with option to print/save securely.
   - **Files**:
     - `components/report/receipt-modal.tsx`
     - `app/(public)/receipt/[code]/page.tsx`: read-only static tips
@@ -322,7 +322,7 @@
   - **User Instructions**: Provide `TEST_DATABASE_URL`; run migrations before tests.
 
 - [ ] Step 35: E2E tests (Playwright)
-  - **Task**: Happy-path: submit report → save receipt → unlock inbox → handler acknowledges → feedback.
+  - **Task**: Happy-path: submit report → save case key → unlock inbox → handler acknowledges → feedback.
   - **Files**:
     - `playwright.config.ts`
     - `tests/e2e/reporting.spec.ts`
@@ -347,7 +347,7 @@
   - **Step Dependencies**: All previous
   - **User Instructions**: Add envs in Vercel; set cron for `/api/cron/sla` and `/api/cron/snapshot`; connect custom domain.
 
-- [ ] Step 38: DPIA checklist & “legal pack” stubs
+- [x] Step 38: DPIA checklist & “legal pack” stubs
   - **Task**: Add markdown docs for DPIA, retention policy, incident response; link from settings.
   - **Files**:
     - `docs/dpia.md`

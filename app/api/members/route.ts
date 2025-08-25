@@ -55,9 +55,9 @@ export async function POST(req: NextRequest) {
     const getErrorMessage = (err: unknown) =>
       err instanceof Error ? err.message : typeof err === "string" ? err : JSON.stringify(err)
 
-    let cc
+    const cc = await clerkClient()
     try {
-      cc = await clerkClient()
+      await cc.organizations.getOrganizationList({ limit: 1 })
     } catch (err: unknown) {
       console.error("[members.POST] clerkClient init failed", err)
       return NextResponse.json(
@@ -76,41 +76,7 @@ export async function POST(req: NextRequest) {
         { status: 502 }
       )
     }
-    let clerkUserId = existing?.id as string | undefined
-    if (!clerkUserId) {
-      try {
-        const createdUser = await cc.users.createUser({
-          emailAddress: [email],
-          firstName: first || undefined,
-          lastName: last || undefined
-        })
-        clerkUserId = createdUser.id
-      } catch (err: unknown) {
-        // If another process created the user concurrently, re-fetch
-        console.error("[members.POST] createUser failed", err)
-        try {
-          existing = (await cc.users.getUserList({ emailAddress: [email] })).data?.[0]
-          clerkUserId = existing?.id
-        } catch {}
-        if (!clerkUserId) {
-          return NextResponse.json(
-            { error: "Failed to create user", code: "clerk_create_user_failed" },
-            { status: 502 }
-          )
-        }
-      }
-      // Best-effort invite email (optional)
-      try {
-        await cc.invitations.createInvitation({
-          emailAddress: email,
-          notify: true,
-          ignoreExisting: true
-        })
-      } catch (err: unknown) {
-        // Non-fatal; log and continue
-        console.warn("[members.POST] createInvitation warning", getErrorMessage(err))
-      }
-    }
+    const clerkUserId = existing?.id as string | undefined
 
     // 2) Ensure Clerk org exists, then create membership with requested role
     const parseClerkError = (err: unknown) => {
@@ -133,19 +99,70 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // Clerk default roles: 'admin' and 'basic_member'
+    const clerkRole: "admin" | "basic_member" = role === "ADMIN" ? "admin" : "basic_member"
+
+    // If user does not exist yet, send an org invitation instead of creating a user
+    if (!clerkUserId) {
+      try {
+        await cc.organizations.createOrganizationInvitation({
+          organizationId: clerkOrgId,
+          emailAddress: email,
+          role: clerkRole
+        })
+      } catch (err: unknown) {
+        // Fallback: send a global account invitation (no org) so user can accept and be added later
+        console.warn("[members.POST] org invitation failed; trying account invitation fallback")
+        try {
+          await cc.invitations.createInvitation({ emailAddress: email, notify: true, ignoreExisting: true })
+          return NextResponse.json({ invited: true, fallback: "account" }, { status: 202 })
+        } catch (inviteErr: unknown) {
+          const details = parseClerkError(inviteErr)
+          console.error("[members.POST] account invitation fallback failed", inviteErr)
+          return NextResponse.json(
+            { error: "Failed to invite user", code: "clerk_invite_failed", details },
+            { status: 502 }
+          )
+        }
+      }
+      // Invitation sent; do not mirror to DB yet since no membership exists
+      return NextResponse.json({ invited: true }, { status: 202 })
+    }
+
+    // Existing user → ensure membership; on 404 fallback to invitation
     try {
-      // Clerk default roles: 'admin' and 'basic_member'
-      const clerkRole: "admin" | "basic_member" = role === "ADMIN" ? "admin" : "basic_member"
       await cc.organizations.createOrganizationMembership({
         organizationId: clerkOrgId,
-        userId: clerkUserId!,
+        userId: clerkUserId,
         role: clerkRole
       })
     } catch (err: unknown) {
-      // If already a member, ignore
       const message = String(getErrorMessage(err) || "").toLowerCase()
+      const status = (err as { status?: number })?.status
       if (message.includes("already")) {
-        // noop
+        // continue
+      } else if (status === 404) {
+        try {
+          await cc.organizations.createOrganizationInvitation({
+            organizationId: clerkOrgId,
+            emailAddress: email,
+            role: clerkRole
+          })
+          return NextResponse.json({ invited: true }, { status: 202 })
+        } catch (inviteErr: unknown) {
+          console.warn("[members.POST] org invite fallback failed; trying account invitation")
+          try {
+            await cc.invitations.createInvitation({ emailAddress: email, notify: true, ignoreExisting: true })
+            return NextResponse.json({ invited: true, fallback: "account" }, { status: 202 })
+          } catch (secondErr: unknown) {
+            const details = parseClerkError(secondErr)
+            console.error("[members.POST] account invitation fallback failed", secondErr)
+            return NextResponse.json(
+              { error: "Failed to invite user", code: "clerk_invite_failed", details },
+              { status: 502 }
+            )
+          }
+        }
       } else {
         const details = parseClerkError(err)
         console.error("[members.POST] createOrganizationMembership failed", err)
@@ -240,9 +257,17 @@ export async function GET() {
   try {
     const orgId = await getDbOrgId()
     if (!orgId) return NextResponse.json([], { status: 200 })
-    const rows = await db.query.orgMembers.findMany({
-      where: eq(orgMembers.orgId, orgId)
-    })
+    const rows = await db
+      .select({
+        orgMemberId: orgMembers.id,
+        userId: users.id,
+        role: orgMembers.role,
+        name: users.name,
+        email: users.email
+      })
+      .from(orgMembers)
+      .innerJoin(users, eq(users.id, orgMembers.userId))
+      .where(eq(orgMembers.orgId, orgId))
     return NextResponse.json(rows, { status: 200 })
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Failed"

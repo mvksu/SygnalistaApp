@@ -1,3 +1,26 @@
+import { describe, expect, it } from "vitest"
+import { generateCaseId, generateCaseKey, hashCaseKey } from "./ids"
+
+describe("ids", () => {
+  it("generateCaseId returns 22-char groups pattern", () => {
+    const id = generateCaseId()
+    expect(id).toMatch(/^[-_A-Za-z0-9]{4}-[-_A-Za-z0-9]{4}-[-_A-Za-z0-9]{4}-[-_A-Za-z0-9]{4}-[-_A-Za-z0-9]{6}$/)
+  })
+
+  it("generateCaseKey returns base64url string without padding", () => {
+    const key = generateCaseKey()
+    expect(key).toMatch(/^[A-Za-z0-9_-]+$/)
+    expect(key.includes("=")).toBe(false)
+  })
+
+  it("hashCaseKey is deterministic and hex", () => {
+    const a = hashCaseKey("secret")
+    const b = hashCaseKey("secret")
+    expect(a).toBe(b)
+    expect(a).toMatch(/^[a-f0-9]{64}$/)
+  })
+})
+
 import { describe, it, expect } from "vitest"
 import { generateCaseId as generateReceiptCode, generateCaseKey as generatePassphrase, hashCaseKey as hashPassphrase } from "./ids"
 

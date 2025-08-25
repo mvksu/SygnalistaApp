@@ -22,7 +22,7 @@ export async function PATCH(req: NextRequest) {
     const role = (String(body?.role || "HANDLER").toUpperCase() as "ADMIN" | "HANDLER" | "AUDITOR")
     if (!email) return NextResponse.json({ error: "Email required" }, { status: 400 })
 
-    const cc = await clerkClient()
+    const cc = clerkClient
     const user = (await cc.users.getUserList({ emailAddress: [email] })).data?.[0]
     if (!user) return NextResponse.json({ error: "User not found in Clerk" }, { status: 404 })
 
@@ -46,5 +46,6 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: e?.message || "Failed" }, { status: 500 })
   }
 }
+
 
 

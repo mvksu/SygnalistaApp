@@ -1,8 +1,24 @@
 import { pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core"
 import { organizations } from "./organizations"
 import { users } from "./users"
+import { and, eq } from "drizzle-orm"
+import { db } from "@/db"
 
 export const orgRole = pgEnum("org_role", ["ADMIN", "HANDLER", "AUDITOR"]) 
+
+export async function getActorOrgMemberId(opts: {
+  userId: string
+  orgId: string
+}) {
+  const row = await db
+    .select({ id: orgMembers.id })
+    .from(orgMembers)
+    .where(
+      and(eq(orgMembers.userId, opts.userId), eq(orgMembers.orgId, opts.orgId))
+    )
+    .limit(1)
+  return row[0]?.id ?? null
+}
 
 export const orgMembers = pgTable("org_members", {
   id: uuid("id").defaultRandom().primaryKey(),

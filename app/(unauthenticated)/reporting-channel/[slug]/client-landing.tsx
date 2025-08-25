@@ -8,10 +8,9 @@ type Props = {
   channelSlug: string
   categories: { id: string; name: string }[]
   captchaSiteKey: string
-  captchaProvider?: "hcaptcha" | "turnstile" | "recaptcha"
 }
 
-export default function ReportLandingClient({ orgName, channelSlug, categories, captchaSiteKey, captchaProvider = "hcaptcha" }: Props) {
+export default function ReportLandingClient({ orgName, channelSlug, categories, captchaSiteKey }: Props) {
   const [started, setStarted] = useState(false)
 
   return (
@@ -75,7 +74,7 @@ export default function ReportLandingClient({ orgName, channelSlug, categories, 
 
       {started && (
         <section id="report-form" className="space-y-4">
-          <ReportForm categories={categories} captchaSiteKey={captchaSiteKey} captchaProvider={captchaProvider} channelSlug={channelSlug} />
+          <ReportForm categories={categories} captchaSiteKey={captchaSiteKey} channelSlug={channelSlug} />
         </section>
       )}
     </div>

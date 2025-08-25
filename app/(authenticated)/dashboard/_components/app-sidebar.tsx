@@ -1,6 +1,6 @@
 "use client"
 
-import { LayoutDashboard, CaseSensitive, BarChart2, Building2, Users, ShieldCheck, FolderTree, Radio, ClipboardList } from "lucide-react"
+import { LayoutDashboard, CaseSensitive, BarChart2, Building2, Users, ShieldCheck, FolderTree, Radio, ClipboardList, Settings } from "lucide-react"
 import * as React from "react"
 
 import {
@@ -80,6 +80,12 @@ export function AppSidebar({
         title: "Surveys",
         url: "/dashboard/surveys",
         icon: ClipboardList,
+        items: []
+      },
+      {
+        title: "Settings",
+        url: "/dashboard/settings",
+        icon: Settings,
         items: []
       }
     ]

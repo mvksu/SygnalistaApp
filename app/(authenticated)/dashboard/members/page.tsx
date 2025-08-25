@@ -1,9 +1,11 @@
 import { auth, currentUser, clerkClient } from "@clerk/nextjs/server"
+import Link from "next/link"
 import { db } from "@/db"
 import { orgMembers } from "@/db/schema/orgMembers"
 import { users } from "@/db/schema/users"
 import { and, eq } from "drizzle-orm"
 import NewMemberButton from "./new-member-button"
+import DeleteMemberButton from "./delete-member-button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 
@@ -52,29 +54,44 @@ export default async function MembersPage() {
     .leftJoin(users, eq(users.id, orgMembers.userId))
     .where(eq(orgMembers.orgId, orgId))
 
-  const clerkIds = [
-    ...new Set(members.map(m => m.clerkId).filter(Boolean))
-  ] as string[]
-  const clerkUsers = clerkIds.length
-    ? Array(
-        ...(await (await clerkClient()).users.getUserList({ userId: clerkIds }))
-          .data
-      )
-    : []
+  const cc = await clerkClient()
 
-  const idToClerk = clerkUsers.length
-    ? new Map(clerkUsers.map(u => [u.id, u]))
-    : new Map()
+  // Existing DB members → base rows
+  const rows = members.map(m => ({
+    ...m,
+    status: "active" as const,
+    lastLoginAt: null as string | null
+  }))
 
-  const rows = members.map(m => {
-    const cu = m.clerkId ? idToClerk.get(m.clerkId) : undefined
-    const lastLoginAt: string | null =
-      cu?.lastSignInAt || cu?.lastActiveAt || null
-    let status: "active" | "invite pending" | "inactive" = "active"
-    if (!cu) status = "invite pending"
-    else if (!lastLoginAt) status = "inactive"
-    return { ...m, status, lastLoginAt }
-  })
+  // Pending invitations from Clerk (not yet members)
+  const orgInvites = (
+    await cc.organizations.getOrganizationInvitationList({
+      organizationId: clerkOrgId,
+      status: ["pending"] as unknown as ("pending" | "accepted" | "revoked")[]
+    })
+  ).data
+  const generalInvites = (
+    await cc.invitations.getInvitationList({ status: "pending", query: "" })
+  ).data
+  const invites = [...orgInvites, ...generalInvites]
+  const existingEmails = new Set(rows.map(r => r.email).filter(Boolean))
+  const pendingRows = invites
+    .filter(inv => inv.emailAddress && !existingEmails.has(inv.emailAddress))
+    .map((inv: { id: string; emailAddress: string; role?: string }) => {
+      const role = inv.role === "admin" ? "ADMIN" : "HANDLER"
+      return {
+        id: `inv:${inv.id}`,
+        role,
+        name: "",
+        email: inv.emailAddress,
+        clerkId: null as unknown as string,
+        status: "pending" as const,
+        lastLoginAt: null as string | null
+      }
+    })
+
+  // Merge
+  const allRows = [...rows, ...pendingRows]
 
   function initials(name?: string | null) {
     if (!name) return "?"
@@ -99,10 +116,11 @@ export default async function MembersPage() {
               <th className="p-2 text-left">Permissions</th>
               <th className="p-2 text-left">Status</th>
               <th className="p-2 text-left">Last login</th>
+              <th className="p-2 text-left">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map(m => (
+            {allRows.map(m => (
               <tr key={m.id} className="border-t">
                 <td className="p-2">
                   <div className="flex items-center gap-2">
@@ -110,7 +128,16 @@ export default async function MembersPage() {
                       <AvatarFallback>{initials(m.name)}</AvatarFallback>
                     </Avatar>
                     <div className="flex items-center gap-2">
-                      <span>{m.name || "-"}</span>
+                      {String(m.id).startsWith("inv:") ? (
+                        <span>{m.name || "-"}</span>
+                      ) : (
+                        <Link
+                          href={`/dashboard/members/user/${m.id}`}
+                          className="hover:underline"
+                        >
+                          {m.name || "-"}
+                        </Link>
+                      )}
                       {m.role === "ADMIN" && (
                         <Badge variant="default">Admin</Badge>
                       )}
@@ -125,15 +152,25 @@ export default async function MembersPage() {
                       ? "Handler"
                       : "Auditor"}
                 </td>
-                <td className="p-2 capitalize">{m.status}</td>
+                <td className="p-2 uppercase">{m.status}</td>
                 <td className="p-2">
                   {m.lastLoginAt
                     ? new Date(m.lastLoginAt).toLocaleString()
                     : "—"}
                 </td>
+                <td className="p-2">
+                  <DeleteMemberButton
+                    email={m.email || ""}
+                    canDelete={Boolean(
+                      m.email &&
+                        u?.emailAddresses?.[0]?.emailAddress?.toLowerCase() !==
+                          m.email?.toLowerCase()
+                    )}
+                  />
+                </td>
               </tr>
             ))}
-            {rows.length === 0 && (
+            {allRows.length === 0 && (
               <tr>
                 <td className="text-muted-foreground p-4" colSpan={5}>
                   No members yet.

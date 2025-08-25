@@ -3,6 +3,7 @@ import { reports } from "@/db/schema/reports"
 import { reportMessages } from "@/db/schema/reportMessages"
 import { reportCategories } from "@/db/schema/reportCategories"
 import { and, eq, gte, lte, inArray } from "drizzle-orm"
+import { organizations } from "@/db/schema/organizations"
 
 export type DashboardStats = {
   newCases: number
@@ -111,6 +112,8 @@ export async function getStatistics(
 
   // KPIs
   const total = allReports.length || 1
+  const org = await db.query.organizations.findFirst({ where: eq(organizations.id, orgId) })
+  const ackDays = (org?.ackDays as number) ?? 7
   let ackWithin = 0
   let ackOverdue = 0
   let feedbackSuccess = 0
@@ -122,7 +125,7 @@ export async function getStatistics(
   for (const r of allReports) {
     const created = r.createdAt as Date
     const ackDeadline = new Date(created)
-    ackDeadline.setDate(ackDeadline.getDate() + 7)
+    ackDeadline.setDate(ackDeadline.getDate() + ackDays)
     if (r.acknowledgedAt && (r.acknowledgedAt as Date) <= ackDeadline) ackWithin++
     if (!r.acknowledgedAt && ackDeadline < now) ackOverdue++
     if ((r.status as string) === "FEEDBACK_GIVEN") feedbackSuccess++

@@ -1,10 +1,13 @@
 import { db } from "@/db"
 import { slaEvents } from "@/db/schema/sla"
 import { reports } from "@/db/schema/reports"
+import { organizations } from "@/db/schema/organizations"
 import { and, eq, gte, isNull } from "drizzle-orm"
 
 export async function computeAndMarkSla(orgId: string) {
   const now = new Date()
+  const org = await db.query.organizations.findFirst({ where: eq(organizations.id, orgId) })
+  const ackDays = (org?.ackDays as number) ?? 7
   // Ack due: 7 days after createdAt when not acknowledged
   const ackCandidates = await db
     .select({ id: reports.id, createdAt: reports.createdAt, acknowledgedAt: reports.acknowledgedAt })
@@ -15,7 +18,7 @@ export async function computeAndMarkSla(orgId: string) {
   const inserts = [] as any[]
   for (const r of ackCandidates) {
     const ackDue = new Date(r.createdAt)
-    ackDue.setDate(ackDue.getDate() + 7)
+    ackDue.setDate(ackDue.getDate() + ackDays)
     if (!r.acknowledgedAt && ackDue <= now) {
       inserts.push({ reportId: r.id, type: "ACK_DUE" as any, dueAt: ackDue, status: "PENDING" as any })
     }

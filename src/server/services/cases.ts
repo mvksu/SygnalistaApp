@@ -1,13 +1,17 @@
 import { db } from "@/db"
-import { reports } from "@/db/schema/reports"
+import { reports, SelectReport } from "@/db/schema/reports"
 import { reportCategories } from "@/db/schema/reportCategories"
-import { and, eq, ilike, sql } from "drizzle-orm"
+import { reportAssignees } from "@/db/schema/reportAssignees"
+import { orgMembers } from "@/db/schema/orgMembers"
+import { users } from "@/db/schema/users"
+import { and, eq, ilike, inArray, gte, lte, SQL } from "drizzle-orm"
+import { organizations } from "@/db/schema/organizations"
 
 export type CaseListItem = {
   id: string
   caseId: string
   categoryName: string
-  status: "OPEN" | "ACKNOWLEDGED" | "IN_PROGRESS" | "FEEDBACK_GIVEN" | "CLOSED"
+  status: SelectReport["status"]
   createdAt: Date
   acknowledgedAt: Date | null
   feedbackDueAt: Date | null
@@ -18,6 +22,7 @@ export type CaseListItem = {
   severity: string
   nextDeadline: Date | null
   lastActivity: Date
+  assignees: { id: string; name: string }[]
 }
 
 function addDays(date: Date, days: number): Date {
@@ -31,9 +36,9 @@ function computeStatuses(row: {
   acknowledgedAt: Date | null
   feedbackDueAt: Date | null
   status: string
-}) {
+}, orgAckDays: number) {
   const now = new Date()
-  const ackDueAt = addDays(row.createdAt, 7)
+  const ackDueAt = addDays(row.createdAt, orgAckDays)
   const ackDone = !!row.acknowledgedAt
   const ackOverdue = !ackDone && now > ackDueAt
   const ackStatus: "due" | "overdue" | "done" = ackDone ? "done" : ackOverdue ? "overdue" : "due"
@@ -48,7 +53,12 @@ function computeStatuses(row: {
 export async function listCases(
   orgId: string,
   options?: {
-    status?: string
+    status?:
+      | "OPEN"
+      | "ACKNOWLEDGED"
+      | "IN_PROGRESS"
+      | "FEEDBACK_GIVEN"
+      | "CLOSED"
     categoryId?: string
     search?: string
     limit?: number
@@ -57,15 +67,31 @@ export async function listCases(
     to?: Date
   }
 ): Promise<CaseListItem[]> {
-  const { status, categoryId, search, limit = 50, offset = 0, from, to } = options || {}
+  const {
+    status,
+    categoryId,
+    search,
+    limit = 50,
+    offset = 0,
+    from,
+    to
+  } = options || {}
 
-  const whereClauses = [eq(reports.orgId, orgId)] as any[]
-  if (status) whereClauses.push(eq(reports.status, status as any))
-  if (categoryId) whereClauses.push(eq(reports.categoryId, categoryId as any))
-  if (search) whereClauses.push(ilike(reports.caseId, `%${search}%`))
+  const whereClauses: SQL[] = [eq(reports.orgId, orgId)]
+  if (status) whereClauses.push(eq(reports.status, status))
+  if (categoryId) whereClauses.push(eq(reports.categoryId, categoryId))
+  if (search) {
+    // broaden search to subject OR caseId
+    whereClauses.push(
+      ilike(reports.caseId, `%${search}%`) // keep your original
+    )
+  }
   if (from) whereClauses.push(gte(reports.createdAt, from))
   if (to) whereClauses.push(lte(reports.createdAt, to))
 
+  // 1) Base rows (one per report)
+  const org = await db.query.organizations.findFirst({ where: eq(organizations.id, orgId) })
+  const ackDays = (org?.ackDays as number) ?? 7
   const rows = await db
     .select({
       id: reports.id,
@@ -75,7 +101,7 @@ export async function listCases(
       status: reports.status,
       createdAt: reports.createdAt,
       acknowledgedAt: reports.acknowledgedAt,
-      feedbackDueAt: reports.feedbackDueAt,
+      feedbackDueAt: reports.feedbackDueAt
     })
     .from(reports)
     .innerJoin(reportCategories, eq(reportCategories.id, reports.categoryId))
@@ -83,21 +109,46 @@ export async function listCases(
     .limit(limit)
     .offset(offset)
 
-  return rows.map((r) => {
+  if (rows.length === 0) return []
+
+  // 2) Fetch assignees for all those reports in one go
+  const reportIds = rows.map(r => r.id)
+  const assigneeRows = await db
+    .select({
+      reportId: reportAssignees.reportId,
+      userId: users.id,
+      name: users.name
+    })
+    .from(reportAssignees)
+    .leftJoin(orgMembers, eq(orgMembers.id, reportAssignees.orgMemberId))
+    .leftJoin(users, eq(users.id, orgMembers.userId))
+    .where(inArray(reportAssignees.reportId, reportIds))
+
+  // 3) Index assignees by reportId
+  const idToAssignees = new Map<string, { id: string; name: string }[]>()
+  for (const a of assigneeRows) {
+    if (!a.reportId || !a.userId) continue
+    const arr = idToAssignees.get(a.reportId) || []
+    arr.push({ id: a.userId, name: a.name ?? "—" })
+    idToAssignees.set(a.reportId, arr)
+  }
+
+  // 4) Map to CaseListItem with computed statuses + assignees
+  return rows.map(r => {
     const { ackDueAt, ackStatus, feedbackStatus } = computeStatuses({
       createdAt: r.createdAt,
       acknowledgedAt: r.acknowledgedAt,
       feedbackDueAt: r.feedbackDueAt,
-      status: r.status,
-    })
+      status: r.status
+    }, ackDays)
     const nextDeadline = r.acknowledgedAt ? (r.feedbackDueAt ?? null) : ackDueAt
     return {
-      id: r.id as string,
-      caseId: r.caseId as string,
-      subject: (r as any).subject || '—',
-      categoryName: r.categoryName as string,
-      status: r.status as any,
-      createdAt: r.createdAt as Date,
+      id: r.id,
+      caseId: r.caseId,
+      subject: r.subject || "—",
+      categoryName: r.categoryName,
+      status: r.status,
+      createdAt: r.createdAt,
       acknowledgedAt: (r.acknowledgedAt as Date | null) ?? null,
       feedbackDueAt: (r.feedbackDueAt as Date | null) ?? null,
       ackDueAt,
@@ -106,6 +157,85 @@ export async function listCases(
       severity: "—",
       nextDeadline,
       lastActivity: r.createdAt as Date,
+      assignees: idToAssignees.get(r.id) || [] // ← attach nested assignees
+    }
+  })
+}
+
+// Row shape suitable for CaseTable component
+export type CaseTableRow = {
+  id: string
+  caseId: string
+  subject?: string
+  category: string
+  assignees: { name: string }[]
+  status: string
+  createdAt: Date
+  acknowledgedAt: Date | null
+  feedbackDueAt: Date | null
+  ackDueAt: Date
+  ackStatus: "due" | "overdue" | "done"
+  feedbackStatus: "due" | "overdue" | "done"
+}
+
+export async function listAssignedCaseRows(orgId: string, orgMemberId: string): Promise<CaseTableRow[]> {
+  const org = await db.query.organizations.findFirst({ where: eq(organizations.id, orgId) })
+  const ackDays = (org?.ackDays as number) ?? 7
+  const base = await db
+    .select({
+      id: reports.id,
+      caseId: reports.caseId,
+      subject: reports.subject,
+      status: reports.status,
+      createdAt: reports.createdAt,
+      acknowledgedAt: reports.acknowledgedAt,
+      feedbackDueAt: reports.feedbackDueAt,
+      categoryName: reportCategories.name,
+    })
+    .from(reports)
+    .leftJoin(reportCategories, eq(reportCategories.id, reports.categoryId))
+    .innerJoin(reportAssignees, eq(reportAssignees.reportId, reports.id))
+    .where(and(eq(reports.orgId, orgId), eq(reportAssignees.orgMemberId, orgMemberId)))
+
+  const reportIds = base.map(b => b.id)
+  const assignees = reportIds.length
+    ? await db
+        .select({
+          reportId: reportAssignees.reportId,
+          name: users.name,
+        })
+        .from(reportAssignees)
+        .leftJoin(orgMembers, eq(orgMembers.id, reportAssignees.orgMemberId))
+        .leftJoin(users, eq(users.id, orgMembers.userId))
+        .where(inArray(reportAssignees.reportId, reportIds))
+    : []
+  const idToAssignees = new Map<string, { name: string }[]>()
+  for (const a of assignees) {
+    const arr = idToAssignees.get(a.reportId) || []
+    if (a.name) arr.push({ name: a.name })
+    idToAssignees.set(a.reportId, arr)
+  }
+
+  return base.map(b => {
+    const { ackDueAt, ackStatus, feedbackStatus } = computeStatuses({
+      createdAt: b.createdAt as Date,
+      acknowledgedAt: (b.acknowledgedAt as Date | null) ?? null,
+      feedbackDueAt: (b.feedbackDueAt as Date | null) ?? null,
+      status: b.status as string,
+    }, ackDays)
+    return {
+      id: b.id as string,
+      caseId: b.caseId as string,
+      subject: b.subject || undefined,
+      category: (b.categoryName as string) || "Uncategorized",
+      assignees: idToAssignees.get(b.id) || [],
+      status: b.status as string,
+      createdAt: b.createdAt as Date,
+      acknowledgedAt: (b.acknowledgedAt as Date | null) ?? null,
+      feedbackDueAt: (b.feedbackDueAt as Date | null) ?? null,
+      ackDueAt,
+      ackStatus,
+      feedbackStatus,
     }
   })
 }
@@ -128,8 +258,8 @@ export async function getCaseSummary(orgId: string, period?: { from?: Date; to?:
           .where(
             and(
               eq(reports.orgId, orgId),
-              period.from ? gte(reports.createdAt, period.from) : ({} as any),
-              period.to ? lte(reports.createdAt, period.to) : ({} as any)
+              ...(period.from ? [gte(reports.createdAt, period.from)] : []),
+              ...(period.to ? [lte(reports.createdAt, period.to)] : [])
             )
           )
       : db.select({ id: reports.id }).from(reports).where(eq(reports.orgId, orgId)),

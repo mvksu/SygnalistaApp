@@ -28,15 +28,13 @@ export default function ReportPage() {
     setReceipt({ code: data.caseId || data.receiptCode, passphrase: data.caseKey || data.passphrase, feedbackDueAt: data.feedbackDueAt })
   }
 
-  const captchaProvider = (process.env.NEXT_PUBLIC_CAPTCHA_PROVIDER as "turnstile" | "hcaptcha") || "turnstile"
-  const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY || ""
+  const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || ""
 
   return (
     <div className="container mx-auto max-w-3xl py-10">
       <h1 className="text-2xl font-semibold mb-6">Submit a Report</h1>
       <ReportForm
         categories={demoCategories}
-        captchaProvider={captchaProvider}
         captchaSiteKey={siteKey}
         onSubmit={handleSubmit}
       />

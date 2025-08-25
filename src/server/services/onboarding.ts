@@ -2,7 +2,7 @@ import { db } from "@/db"
 import { onboardingSteps } from "@/db/schema/userOnboarding"
 import { eq, and } from "drizzle-orm"
 
-export type OnboardingKey = "watch_intro" | "invite_users" | "configure_access" | "brand_reporting" | "set_security_defaults"
+export type OnboardingKey = "watch_intro" | "invite_members" | "configure_access" | "brand_reporting" | "set_security_defaults"
 
 export async function setStepCompleted(userId: string, key: OnboardingKey) {
   const existing = await db.query.onboardingSteps.findFirst({ where: and(eq(onboardingSteps.userId, userId), eq(onboardingSteps.key, key)) })
@@ -18,7 +18,7 @@ export async function getSteps(userId: string): Promise<Record<OnboardingKey, bo
   const map = Object.fromEntries(rows.map(r => [r.key, r.completed])) as Record<OnboardingKey, boolean>
   return {
     watch_intro: !!map.watch_intro,
-    invite_users: !!map.invite_users,
+    invite_members: !!map.invite_members,
     configure_access: !!map.configure_access,
     brand_reporting: !!map.brand_reporting,
     set_security_defaults: !!map.set_security_defaults

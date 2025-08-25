@@ -6,10 +6,16 @@ import { Button } from "@/components/ui/button"
 import React from "react"
 import { db } from "@/db"
 import { users } from "@/db/schema/users"
-import { eq } from "drizzle-orm"
+import { and, eq, inArray } from "drizzle-orm"
 import LinkNext from "next/link"
 import { OnboardingActions } from "./_components/onboarding-actions"
 import { OnboardingProgress } from "./_components/onboarding-progress"
+import { CaseTable } from "@/components/cases/case-table"
+import { reports } from "@/db/schema/reports"
+import { reportCategories } from "@/db/schema/reportCategories"
+import { reportAssignees } from "@/db/schema/reportAssignees"
+import { orgMembers, getActorOrgMemberId } from "@/db/schema/orgMembers"
+import { listAssignedCaseRows } from "@/src/server/services/cases"
 
 async function getOrCreateUserId() {
   const { userId: clerkId } = await auth()
@@ -24,13 +30,41 @@ async function getOrCreateUserId() {
 export default async function Page() {
   const { orgId: clerkOrgId } = await auth()
   let stats = { newCases: 0, openCases: 0, closedCases: 0 }
+  let dbOrgId: string | null = null
   if (clerkOrgId) {
     const { getDbOrgIdForClerkOrg } = await import("@/src/server/orgs")
-    const dbOrgId = await getDbOrgIdForClerkOrg(clerkOrgId)
-    stats = await getStatistics(dbOrgId)
+    dbOrgId = await getDbOrgIdForClerkOrg(clerkOrgId)
+    if (dbOrgId) {
+      // Compute simple counts for dashboard boxes
+      const all = await db
+        .select({ createdAt: reports.createdAt, status: reports.status })
+        .from(reports)
+        .where(eq(reports.orgId, dbOrgId))
+      const now = new Date()
+      const sevenDaysAgo = new Date(now)
+      sevenDaysAgo.setDate(now.getDate() - 7)
+      let newCases = 0
+      let openCases = 0
+      let closedCases = 0
+      for (const r of all) {
+        if ((r.createdAt as Date) >= sevenDaysAgo) newCases++
+        if ((r.status as string) === "CLOSED") closedCases++
+        else openCases++
+      }
+      stats = { newCases, openCases, closedCases }
+    }
   }
   const dbUserId = await getOrCreateUserId()
   const user = await currentUser()
+  // Build "Assigned to me" rows using reusable service
+  let assignedToMe: Awaited<ReturnType<typeof listAssignedCaseRows>> = []
+  if (dbOrgId && dbUserId) {
+    const memberId = await getActorOrgMemberId({ userId: dbUserId, orgId: dbOrgId })
+    if (memberId) {
+      assignedToMe = await listAssignedCaseRows(dbOrgId, memberId)
+    }
+  }
+  
   return (
     <div className="space-y-6">
       <div className="flex justify-between">
@@ -55,7 +89,9 @@ export default async function Page() {
               "use server"
               // mark completed
               if (!dbUserId) return
-              const { setStepCompleted } = await import("@/src/server/services/onboarding")
+              const { setStepCompleted } = await import(
+                "@/src/server/services/onboarding"
+              )
               await setStepCompleted(dbUserId, "watch_intro")
             },
             key: "watch_intro"
@@ -65,6 +101,15 @@ export default async function Page() {
             icon: UserPlus,
             description: "Add team members to collaborate",
             href: "/dashboard/members",
+            action: async () => {
+              "use server"
+              // mark completed
+              if (!dbUserId) return
+              const { setStepCompleted } = await import(
+                "@/src/server/services/onboarding"
+              )
+              await setStepCompleted(dbUserId, "invite_members")
+            },
             key: "invite_members"
           },
           {
@@ -72,6 +117,15 @@ export default async function Page() {
             icon: Shield,
             description: "Set up roles and permissions",
             href: "/dashboard/access",
+            action: async () => {
+              "use server"
+              // mark completed
+              if (!dbUserId) return
+              const { setStepCompleted } = await import(
+                "@/src/server/services/onboarding"
+              )
+              await setStepCompleted(dbUserId, "configure_access")
+            },
             key: "configure_access"
           },
           {
@@ -79,6 +133,15 @@ export default async function Page() {
             icon: Palette,
             description: "Customize the look and feel",
             href: "/dashboard/settings",
+            action: async () => {
+              "use server"
+              // mark completed
+              if (!dbUserId) return
+              const { setStepCompleted } = await import(
+                "@/src/server/services/onboarding"
+              )
+              await setStepCompleted(dbUserId, "brand_reporting")
+            },
             key: "brand_reporting"
           },
           {
@@ -86,18 +149,45 @@ export default async function Page() {
             icon: Lock,
             description: "Configure security settings",
             href: "/dashboard/settings",
+            action: async () => {
+              "use server"
+              // mark completed
+              if (!dbUserId) return
+              const { setStepCompleted } = await import(
+                "@/src/server/services/onboarding"
+              )
+              await setStepCompleted(dbUserId, "set_security_defaults")
+            },
             key: "set_security_defaults"
           }
-        ].map((cfg: { title: string; icon: React.ComponentType; description?: string; href?: string; key: string }, idx: number) => (
-          <div className="rounded-md border p-6 text-center" key={idx}>
-            <div className="bg-muted mx-auto mb-3 inline-flex h-10 w-10 items-center justify-center rounded-full">
-              {React.createElement(cfg.icon)}
+        ].map(
+          (
+            cfg: {
+              title: string
+              icon: React.ComponentType
+              description?: string
+              href?: string
+              key: string
+            },
+            idx: number
+          ) => (
+            <div className="rounded-md border p-6 text-center" key={idx}>
+              <div className="bg-muted mx-auto mb-3 inline-flex h-10 w-10 items-center justify-center rounded-full">
+                {React.createElement(cfg.icon)}
+              </div>
+              <div className="text-lg font-semibold">{cfg.title}</div>
+              <p className="text-muted-foreground mt-1 text-sm">
+                {cfg.description}
+              </p>
+              <OnboardingActions
+                title={cfg.title}
+                description={cfg.description}
+                href={cfg.href}
+                keyName={cfg.key}
+              />
             </div>
-            <div className="text-lg font-semibold">{cfg.title}</div>
-            <p className="text-muted-foreground mt-1 text-sm">{cfg.description}</p>
-            <OnboardingActions title={cfg.title} description={cfg.description} href={cfg.href} keyName={cfg.key} />
-          </div>
-        ))}
+          )
+        )}
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -123,7 +213,13 @@ export default async function Page() {
 
       <div className="rounded-md border p-4">
         <div className="mb-2 font-medium">Assigned to me</div>
-        <div className="text-muted-foreground text-sm">No items assigned.</div>
+        {assignedToMe.length === 0 ? (
+          <div className="text-muted-foreground text-sm">No items assigned.</div>
+        ) : (
+          <div className="text-muted-foreground text-sm">
+            <CaseTable rows={assignedToMe} />
+          </div>
+        )}
       </div>
     </div>
   )

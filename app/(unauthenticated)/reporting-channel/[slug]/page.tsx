@@ -18,21 +18,14 @@ export default async function PublicReportLanding({ params }: { params: Promise<
   return (
     <div className="container mx-auto max-w-3xl py-10">
       {(() => {
-        const provider = (process.env.NEXT_PUBLIC_CAPTCHA_PROVIDER as "turnstile" | "hcaptcha" | "recaptcha") || "hcaptcha"
-        const siteKeyEnv =
-          provider === "turnstile"
-            ? process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
-            : provider === "hcaptcha"
-              ? process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY
-              : process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY
-        const siteKey = siteKeyEnv || ""
+        const siteKeyEnv = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY
+        const siteKey = siteKeyEnv || ""  
         return (
           <ReportLandingClient
             orgName={org?.name || "Organization"}
             channelSlug={channel.slug}
             categories={categories}
             captchaSiteKey={siteKey}
-            captchaProvider={provider as any}
           />
         )
       })()}

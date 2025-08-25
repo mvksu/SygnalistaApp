@@ -1,12 +1,14 @@
 import { db } from "@/db"
-import { reports } from "@/db/schema/reports"
+import { reports, SelectReport } from "@/db/schema/reports"
 import { reportMessages } from "@/db/schema/reportMessages"
 import { eq } from "drizzle-orm"
 import { encryptField } from "@/lib/crypto/encryption"
 import { writeAudit } from "@/src/server/services/audit"
 import { sendAcknowledgeEmail, sendFeedbackEmail } from "@/src/server/notify/mailer"
 import { organizations } from "@/db/schema/organizations"
-import { eq } from "drizzle-orm"
+import { logReport } from "./reportLogs"
+import { reportAssignees } from "@/db/schema/reportAssignees"
+
 
 export async function acknowledgeReport(options: { orgId: string; reportId: string; actorId?: string | null }) {
   const now = new Date()
@@ -52,6 +54,30 @@ export async function addHandlerMessage(options: { orgId: string; reportId: stri
   await writeAudit({ orgId: options.orgId, actorId: options.actorId || null, action: "REPORT_MESSAGE_ADDED", targetType: "report", targetId: options.reportId })
   return msg
 }
+
+export async function updateReportStatus(options: { orgId: string; reportId: string; status: string; actorId?: string | null }) {
+  const [updated] = await db
+    .update(reports)
+    .set({ status: options.status as SelectReport["status"] })
+    .where(eq(reports.id, options.reportId))
+    .returning()
+  
+  return updated
+} 
+
+// assign
+export async function assignReport({ reportId, orgMemberId, actorId }: { reportId: string; orgMemberId: string; actorId?: string }) {
+  await db.insert(reportAssignees).values({ reportId, orgMemberId, addedByOrgMemberId: actorId }).onConflictDoNothing()
+  await logReport(reportId, "assignment_added", `Assigned org_member_id=${orgMemberId}`, actorId)
+}
+
+// unassign
+export async function unassignReport({ reportId, orgMemberId, actorId }: { reportId: string; orgMemberId: string; actorId?: string }) {
+  await db.delete(reportAssignees)
+    .where(and(eq(reportAssignees.reportId, reportId), eq(reportAssignees.orgMemberId, orgMemberId)))
+  await logReport(reportId, "assignment_removed", `Unassigned org_member_id=${orgMemberId}`, actorId)
+}
+
 
 
 

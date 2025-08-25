@@ -8,13 +8,13 @@ import { setChannelDefaultLanguage, deleteReportingChannelAction } from "@/actio
 import { CopyButton } from "@/components/ui/copy-button"
 import { Link as LinkIcon, ExternalLink, Copy as CopyIcon, Image as ImageIcon } from "lucide-react"
 
-export default async function ReportingChannelDetail({ params }: { params: { id: string } }) {
+export default async function ReportingChannelDetail({ params }: { params: Promise<{ id: string }> }) {
 	const { orgId: clerkOrgId } = await auth()
 	if (!clerkOrgId) return null
 	const { getDbOrgIdForClerkOrg } = await import("@/src/server/orgs")
 	const orgId = await getDbOrgIdForClerkOrg(clerkOrgId)
 
-	const channel = await db.query.reportingChannels.findFirst({ where: eq(reportingChannels.id, params.id) })
+	const channel = await db.query.reportingChannels.findFirst({ where: eq(reportingChannels.id, (await params).id) })
 	if (!channel || channel.orgId !== orgId) return null
 	const org = await db.query.organizations.findFirst({ where: eq(organizations.id, orgId) })
 

@@ -18,7 +18,12 @@ function getEnv() {
 
 export type CaptchaVerifyResult = { success: true } | { success: false; error: string }
 
-export async function verifyCaptcha(token: string, remoteip?: string): Promise<CaptchaVerifyResult> {
+type VerifyOptions = {
+  expectedAction?: string
+  minScore?: number // for reCAPTCHA v3
+}
+
+export async function verifyCaptcha(token: string, remoteip?: string, options?: VerifyOptions): Promise<CaptchaVerifyResult> {
   const { CAPTCHA_PROVIDER, TURNSTILE_SECRET_KEY, HCAPTCHA_SECRET_KEY, RECAPTCHA_SECRET_KEY, CAPTCHA_DISABLED } = getEnv() as any
   // Global bypass toggle
   if (CAPTCHA_DISABLED === "true" || CAPTCHA_DISABLED === "1") {
@@ -74,9 +79,46 @@ export async function verifyCaptcha(token: string, remoteip?: string): Promise<C
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({ secret: RECAPTCHA_SECRET_KEY, response: token, remoteip: remoteip || "" }),
     })
-    const data = (await resp.json()) as { success: boolean; [k: string]: unknown }
-    if (data.success) return { success: true }
-    return { success: false, error: "recaptcha failed" }
+    const data = (await resp.json()) as { success: boolean; action?: string; score?: number; [k: string]: unknown }
+    if (!data.success) return { success: false, error: "recaptcha failed" }
+    if (typeof options?.expectedAction === "string" && data.action && data.action !== options.expectedAction) {
+      return { success: false, error: `recaptcha action mismatch: expected ${options.expectedAction}, got ${data.action}` }
+    }
+    if (typeof options?.minScore === "number" && typeof data.score === "number" && data.score < options.minScore) {
+      return { success: false, error: `recaptcha score too low: ${data.score}` }
+    }
+    return { success: true }
+  } catch (err: any) {
+    return { success: false, error: err?.message || "captcha verify error" }
+  }
+}
+
+export async function verifyRecaptchaV3(token: string, remoteip?: string, options?: VerifyOptions): Promise<CaptchaVerifyResult> {
+  const { RECAPTCHA_SECRET_KEY, CAPTCHA_DISABLED } = getEnv() as any
+  if (CAPTCHA_DISABLED === "true" || CAPTCHA_DISABLED === "1") {
+    return { success: true }
+  }
+  try {
+    if (!RECAPTCHA_SECRET_KEY) {
+      if (process.env.NODE_ENV !== "production" && token === "dev-token") {
+        return { success: true }
+      }
+      return { success: false, error: "RECAPTCHA_SECRET_KEY not set" }
+    }
+    const resp = await fetch("https://www.google.com/recaptcha/api/siteverify", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ secret: RECAPTCHA_SECRET_KEY, response: token, remoteip: remoteip || "" }),
+    })
+    const data = (await resp.json()) as { success: boolean; action?: string; score?: number; [k: string]: unknown }
+    if (!data.success) return { success: false, error: "recaptcha failed" }
+    if (typeof options?.expectedAction === "string" && data.action && data.action !== options.expectedAction) {
+      return { success: false, error: `recaptcha action mismatch: expected ${options.expectedAction}, got ${data.action}` }
+    }
+    if (typeof options?.minScore === "number" && typeof data.score === "number" && data.score < options.minScore) {
+      return { success: false, error: `recaptcha score too low: ${data.score}` }
+    }
+    return { success: true }
   } catch (err: any) {
     return { success: false, error: err?.message || "captcha verify error" }
   }

@@ -49,8 +49,8 @@ export function OnboardingActions({
   return (
     <div className="mt-8 flex flex-col items-center justify-center gap-2">
       {href ? (
-        <Button asChild disabled={completed}>
-          <Link href={href}>{completed ? "Completed" : `Go to ${title.toLowerCase()}`}</Link>
+        <Button disabled={completed}>
+          <Link href={href} onClick={() => markCompleted()}>{completed ? "Completed" : `Go to ${title.toLowerCase()}`}</Link>
         </Button>
       ) : (
         <>

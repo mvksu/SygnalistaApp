@@ -55,11 +55,9 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 CRON_SECRET=
 
 # CAPTCHA
-NEXT_PUBLIC_CAPTCHA_PROVIDER=hcaptcha # or turnstile or recaptcha
-NEXT_PUBLIC_HCAPTCHA_SITE_KEY=
-HCAPTCHA_SECRET_KEY=
-NEXT_PUBLIC_TURNSTILE_SITE_KEY=
-TURNSTILE_SECRET_KEY=
+NEXT_PUBLIC_RECAPTCHA_SITE_KEY=
+RECAPTCHA_SECRET_KEY=
+NEXT_PUBLIC_DISABLE_RECAPTCHA=false
 NEXT_PUBLIC_RECAPTCHA_SITE_KEY=
 RECAPTCHA_SECRET_KEY=
 ```
@@ -77,5 +75,5 @@ RECAPTCHA_SECRET_KEY=
 - Provide `CRON_SECRET` and configure Vercel Cron (vercel.json included):
   - `POST /api/cron/sla` hourly (x-cron-secret header)
   - `POST /api/cron/snapshot` monthly on the 1st (x-cron-secret header)
-- Set `NEXT_PUBLIC_CAPTCHA_PROVIDER` and appropriate site/secret keys
+- Set `NEXT_PUBLIC_RECAPTCHA_SITE_KEY` and `RECAPTCHA_SECRET_KEY`. To disable on specific environments, set `NEXT_PUBLIC_DISABLE_RECAPTCHA=true` (client) and/or `CAPTCHA_DISABLED=true` (server).
 - Configure image domains in `next.config.ts` if needed

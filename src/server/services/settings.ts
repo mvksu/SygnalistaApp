@@ -8,11 +8,14 @@ export async function getOrgSettings(orgId: string) {
   return org
 }
 
-export async function updateOrgSettings(orgId: string, input: { name?: string; locale?: string; retentionDays?: number }) {
+export async function updateOrgSettings(orgId: string, input: { name?: string; locale?: string; retentionDays?: number; anonymousAllowed?: boolean; ackDays?: number; feedbackMonths?: number }) {
   await db.update(organizations).set({
     name: input.name,
     locale: input.locale,
     retentionDays: input.retentionDays as any,
+    anonymousAllowed: input.anonymousAllowed,
+    ackDays: input.ackDays as any,
+    feedbackMonths: input.feedbackMonths as any,
   }).where(eq(organizations.id, orgId))
 }
 

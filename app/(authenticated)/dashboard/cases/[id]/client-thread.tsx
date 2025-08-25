@@ -21,6 +21,7 @@ export default function CaseThreadClient({ reportId, initialThread }: Props) {
   const [message, setMessage] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [actionLoading, setActionLoading] = useState<"ack" | "feedback" | null>(null)
+  const [anonymousSend, setAnonymousSend] = useState(false)
 
   async function postJson(url: string, body?: unknown) {
     const resp = await fetch(url, {
@@ -104,6 +105,18 @@ export default function CaseThreadClient({ reportId, initialThread }: Props) {
             {submitting ? "Sending..." : "Send"}
           </Button>
         </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="anonymousSend"
+              className="h-4 w-4"
+              checked={anonymousSend}
+              onChange={(e) => setAnonymousSend(e.target.checked)}
+            />
+            <label htmlFor="anonymousSend" className="text-sm text-muted-foreground">
+              Do not display my name to the sender
+            </label>
+          </div>
       </div>
     </div>
   )

@@ -17,3 +17,4 @@ export default function AcknowledgeTemplate({ orgName, caseId, createdAt }: { or
 }
 
 
+
