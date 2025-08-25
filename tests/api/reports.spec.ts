@@ -6,16 +6,107 @@ import { organizations } from "@/db/schema/organizations"
 import { reportCategories } from "@/db/schema/reportCategories"
 
 vi.mock("@/lib/captcha", () => ({
-	verifyCaptcha: vi.fn().mockResolvedValue({ success: true }),
+  verifyCaptcha: vi.fn().mockResolvedValue({ success: true })
 }))
 
 vi.mock("@clerk/nextjs/server", () => ({
-	auth: vi.fn().mockResolvedValue({ orgId: "clerk-org-1" }),
+  auth: vi.fn().mockResolvedValue({ orgId: "clerk-org-1" })
 }))
 
 vi.mock("@/src/server/orgs", () => ({
-	getDbOrgIdForClerkOrg: vi.fn().mockResolvedValue("00000000-0000-0000-0000-000000000001"),
+  getDbOrgIdForClerkOrg: vi
+    .fn()
+    .mockResolvedValue("00000000-0000-0000-0000-000000000001")
 }))
+
+// Additional test cases for /api/reports
+
+describe("POST /api/reports - Additional Cases", () => {
+	beforeAll(async () => {
+		const orgId = "00000000-0000-0000-0000-000000000002"
+		await db
+			.insert(organizations)
+			.values({ id: orgId, name: "Second Org", slug: "clerk-org-2", plan: "pro", retentionDays: 180, locale: "en-US" })
+			.onConflictDoNothing()
+		const categoryId = "22222222-2222-2222-2222-222222222222"
+		await db
+			.insert(reportCategories)
+			.values({ id: categoryId, orgId, name: "Abuse", description: "Abuse reports" })
+			.onConflictDoNothing()
+	})
+
+	it("returns 400 if categoryId is missing", async () => {
+		const body = {
+			body: "This is a valid report body with more than twenty characters.",
+			anonymous: true,
+			captchaToken: "ok",
+		}
+		const req = new NextRequest("http://localhost/api/reports", {
+			method: "POST",
+			body: JSON.stringify(body),
+			headers: { "content-type": "application/json" },
+		}) as any
+
+		const res = await createReport(req)
+		expect(res.status).toBe(400)
+	})
+
+	it("returns 400 if body is too short", async () => {
+		const body = {
+			categoryId: "22222222-2222-2222-2222-222222222222",
+			body: "Too short",
+			anonymous: true,
+			captchaToken: "ok",
+		}
+		const req = new NextRequest("http://localhost/api/reports", {
+			method: "POST",
+			body: JSON.stringify(body),
+			headers: { "content-type": "application/json" },
+		}) as any
+
+		const res = await createReport(req)
+		expect(res.status).toBe(400)
+	})
+
+	it("returns 400 if captchaToken is missing", async () => {
+		const body = {
+			categoryId: "22222222-2222-2222-2222-222222222222",
+			body: "This is a valid report body with more than twenty characters.",
+			anonymous: true,
+		}
+		const req = new NextRequest("http://localhost/api/reports", {
+			method: "POST",
+			body: JSON.stringify(body),
+			headers: { "content-type": "application/json" },
+		}) as any
+
+		const res = await createReport(req)
+		expect(res.status).toBe(400)
+	})
+
+	it("returns 400 if categoryId does not exist", async () => {
+		const body = {
+			categoryId: "33333333-3333-3333-3333-333333333333",
+			body: "This is a valid report body with more than twenty characters.",
+			anonymous: true,
+			captchaToken: "ok",
+		}
+		const req = new NextRequest("http://localhost/api/reports", {
+			method: "POST",
+			body: JSON.stringify(body),
+			headers: { "content-type": "application/json" },
+		}) as any
+
+		const res = await createReport(req)
+		expect([400, 500]).toContain(res.status)
+	})
+
+	it("returns non-OK for non-POST methods", async () => {
+		const req = new NextRequest("http://localhost/api/reports", { method: "GET" }) as any
+		const res = await createReport(req)
+		expect(res.status).not.toBe(200)
+	})
+})
 
 describe("POST /api/reports", () => {
 	beforeAll(() => {
@@ -35,7 +126,7 @@ describe("POST /api/reports", () => {
 			.onConflictDoNothing()
 	})
 
-	it("creates a report and returns receipt + passphrase", async () => {
+	it("creates a report and returns case code + case key", async () => {
 		const body = {
 			categoryId: "11111111-1111-1111-1111-111111111111",
 			body: "This is a valid report body with more than twenty characters.",
@@ -58,3 +149,4 @@ describe("POST /api/reports", () => {
 })
 
 
+	

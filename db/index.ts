@@ -10,6 +10,7 @@ import { reports } from "./schema/reports"
 import { reportMessages } from "./schema/reportMessages"
 import { attachments } from "./schema/attachments"
 import { slaEvents } from "./schema/sla"
+import { reportAssignees } from "./schema/reportAssignees"
 import { reportingChannels } from "./schema/reportingChannels"
 import { auditLog } from "./schema/audit"
 import { exportsTable } from "./schema/exports"
@@ -31,6 +32,7 @@ const dbSchema = {
   reportCategories,
   reports,
   reportMessages,
+  reportAssignees,
   attachments,
   slaEvents,
   auditLog,

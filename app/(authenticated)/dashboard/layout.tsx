@@ -1,5 +1,5 @@
 import { getCustomerByUserId } from "@/actions/customers"
-import { currentUser } from "@clerk/nextjs/server"
+import { auth, currentUser } from "@clerk/nextjs/server"
 import { redirect } from "next/navigation"
 import DashboardClientLayout from "./_components/layout-client"
 
@@ -8,22 +8,24 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  const user = await currentUser()
+  const { userId, orgId } = await auth() 
 
-  if (!user) {
+  if (!userId) {
     redirect("/login")
   }
 
-  const customer = await getCustomerByUserId(user.id)
+  const customer = await getCustomerByUserId(userId)
 
-  const disableProGate = process.env.NEXT_PUBLIC_DISABLE_PRO_GATE === "true"
+  // jeżeli użytkownik jest w organizacji, pobierz jej membership z bazy
+  const orgMembership = orgId ? await getOrganizationSubscription(orgId) : null
 
-  // Gate dashboard access for pro members only
-  // Store a message to show why they were redirected
-  if (!disableProGate && (!customer || customer.membership !== "pro")) {
-    // Using searchParams to pass a message that can be read by client components
+  const isPro =
+    customer?.membership === "pro" || orgMembership?.membership === "pro"
+
+  if (!isPro) {
     redirect("/?redirect=dashboard#pricing")
   }
+
 
   const userData = {
     name:

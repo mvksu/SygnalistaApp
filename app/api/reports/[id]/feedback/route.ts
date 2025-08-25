@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
-import { auth } from "@clerk/nextjs/server"
+import { assertRoleInOrg, assertCanAccessReport } from "@/lib/authz"
 import { giveFeedback } from "@/src/server/services/reports"
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { userId, orgId } = await auth()
-    if (!userId || !orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const { userId, orgId, role } = await assertRoleInOrg(["ADMIN", "HANDLER"]) 
     const reportId = params.id
+    await assertCanAccessReport({ orgId, userId, role, reportId })
     await giveFeedback({ orgId, reportId, actorId: userId })
     return NextResponse.json({ ok: true })
   } catch (err: any) {

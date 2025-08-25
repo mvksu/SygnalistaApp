@@ -27,6 +27,7 @@ export const reports = pgTable("reports", {
   status: reportStatus("status").default("OPEN").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   acknowledgedAt: timestamp("acknowledged_at"),
+  ackDueAt: timestamp("ack_due_at"),
   feedbackDueAt: timestamp("feedback_due_at"),
   reporterMode: reporterMode("reporter_mode").default("ANON").notNull(),
   reporterContactEncrypted: text("reporter_contact_encrypted"),

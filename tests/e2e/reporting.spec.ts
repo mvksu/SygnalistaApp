@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 
+// Important: Ensure this file is not imported by vitest. Keep it under tests/e2e/ and run via Playwright only.
 test('Submit report → receive receipt → unlock inbox → send follow-up', async ({ page }) => {
   const channelSlug = process.env.PLAYWRIGHT_CHANNEL_SLUG
   if (!channelSlug) {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { auth } from "@clerk/nextjs/server"
+import { assertRoleInOrg, assertCanAccessReport } from "@/lib/authz"
 import { updateReportStatus } from "@/src/server/services/reports"
 import { z } from "zod"
 import { logReport } from "@/src/server/services/reportLogs"
@@ -29,11 +29,9 @@ export async function POST(
     }
 
     const { status } = Body.parse(parsed)
-
-    const { userId, orgId } = await auth()
-    if (!userId || !orgId)
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const { userId, orgId, role } = await assertRoleInOrg(["ADMIN", "HANDLER"]) 
     const { id: reportId } = await params
+    await assertCanAccessReport({ orgId, userId, role, reportId })
     console.log(status)
 
     await updateReportStatus({

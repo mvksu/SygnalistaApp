@@ -14,6 +14,7 @@ export default defineConfig({
 			"src/**/*.test.{ts,tsx}",
 			"tests/**/*.spec.{ts,tsx}",
 		],
+		exclude: ["tests/e2e/**"],
 		coverage: {
 			reporter: ["text", "html"],
 			provider: "v8",

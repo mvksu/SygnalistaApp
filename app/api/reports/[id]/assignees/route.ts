@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { assertRoleInOrg, assertCanAccessReport } from '@/lib/authz'
 import { z } from 'zod'
 import { db } from '@/db'
 import { and, eq, inArray } from 'drizzle-orm'
@@ -58,10 +58,7 @@ export async function POST(
     return NextResponse.json({ error: 'Invalid body' }, { status: 400 })
   }
 
-  const { userId: clerkUserId, orgId: clerkOrgId } = await auth()
-  if (!clerkUserId || !clerkOrgId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const { userId: clerkUserId, orgId: clerkOrgId, role } = await assertRoleInOrg(["ADMIN", "HANDLER"]) 
 
   // Map Clerk IDs → DB IDs
   const dbOrgId = await getDbOrgIdForClerkOrg(clerkOrgId)
@@ -71,10 +68,11 @@ export async function POST(
   const dbUser = await db.query.users.findFirst({ where: eq(users.clerkId, clerkUserId) })
 
   // Ensure the report belongs to the current org (DB)
-  const report = await db.query.reports.findFirst({ where: eq(reports.id, reportId) })
-  if (!report || report.orgId !== dbOrgId) {
+  const report = await db.query.reports.findFirst({ where: and(eq(reports.id, reportId), eq(reports.orgId, dbOrgId)) })
+  if (!report) {
     return NextResponse.json({ error: 'Report not found' }, { status: 404 })
   }
+  await assertCanAccessReport({ orgId: dbOrgId, userId: clerkUserId, role, reportId })
 
   const actorOrgMemberId = dbUser
     ? await getActorOrgMemberId({ userId: dbUser.id, orgId: dbOrgId })
