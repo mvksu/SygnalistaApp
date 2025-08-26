@@ -2,17 +2,30 @@
 
 import ReportForm from "@/components/report/report-form"
 import ReceiptModal from "@/components/report/receipt-modal"
-import { useState } from "react"
-
-// TODO: Replace with real categories from DB when API is ready
-const demoCategories = [
-  { id: "safety", name: "Safety" },
-  { id: "fraud", name: "Fraud" },
-  { id: "harassment", name: "Harassment" },
-]
+import { useState, useEffect } from "react"
 
 export default function ReportPage() {
   const [receipt, setReceipt] = useState<{ code: string; passphrase: string; feedbackDueAt?: string | null } | null>(null)
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([])
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const params = new URLSearchParams(window.location.search)
+        const channel = params.get("channel")
+        const org = params.get("org")
+        const query = channel ? `?channel=${encodeURIComponent(channel)}` : org ? `?org=${encodeURIComponent(org)}` : ""
+        const resp = await fetch(`/api/report-categories${query}`)
+        if (resp.ok) {
+          const data = await resp.json()
+          setCategories(data)
+        }
+      } catch (e) {
+        console.error("Failed to load categories", e)
+      }
+    }
+    load()
+  }, [])
 
   async function handleSubmit(formData: any) {
     const resp = await fetch("/api/reports", {
@@ -34,7 +47,7 @@ export default function ReportPage() {
     <div className="container mx-auto max-w-3xl py-10">
       <h1 className="text-2xl font-semibold mb-6">Submit a Report</h1>
       <ReportForm
-        categories={demoCategories}
+        categories={categories}
         captchaSiteKey={siteKey}
         onSubmit={handleSubmit}
       />
