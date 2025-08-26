@@ -10,7 +10,24 @@ export default clerkMiddleware(async (auth, req) => {
     return redirectToSignIn()
   }
 
-  return NextResponse.next()
+  const csp = [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' https://js.stripe.com",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data:",
+    "connect-src 'self' https://*.clerk.com https://*.clerk.dev https://*.clerk.services https://*.supabase.co https://api.stripe.com",
+    "frame-src 'self' https://js.stripe.com https://hooks.stripe.com",
+  ].join('; ')
+
+  const headers = new Headers({
+    "Content-Security-Policy": csp,
+    "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "no-referrer",
+    "X-Content-Type-Options": "nosniff",
+  })
+
+  return NextResponse.next({ headers })
 })
 
 export const config = {
