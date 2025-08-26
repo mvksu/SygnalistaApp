@@ -47,6 +47,7 @@ export default async function CaseViewPage({
     createdAt: (m.createdAt as Date).toISOString()
   }))
   const CaseTabs = (await import("./case-tabs")).default
+  const SlaPanel = (await import("./sla-panel")).default
 
   const logs = await db
     .select()
@@ -100,7 +101,10 @@ export default async function CaseViewPage({
           <CaseTabs reportId={String(report.id)} initialThread={items} initialLogs={logs} />
         </div>
 
-        <InfoPanel report={report} orgName={orgName} />
+        <div className="space-y-4">
+          <InfoPanel report={report} orgName={orgName} />
+          <SlaPanel reportId={String(report.id)} />
+        </div>
       </div>
     </div>
   )

@@ -31,7 +31,6 @@ export default async function PublicReportLanding({ params }: { params: Promise<
             orgName={org?.name || "Organization"}
             channelSlug={channel.slug}
             categories={categories}
-            captchaSiteKey={siteKey}
             orgImgUrl={orgImgUrl || ""}
           />
         )

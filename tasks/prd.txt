@@ -6,7 +6,7 @@ This product is a multi-tenant SaaS platform that enables organizations in Polan
 Core Features
 1) Secure Intake Portal (anonymous-friendly)
 
-What it does: Public web form to submit a report (text + attachments), optionally anonymous, generates a receipt code and passphrase for a private “secure inbox.”
+What it does: Public web form to submit a report (text + attachments), optionally anonymous, generates a case code and case key for a private “secure inbox.”
 
 Why it’s important: Polish law allows accepting anonymous reports; anonymity can increase reporting. Channels must protect confidentiality (RODO). 
  
