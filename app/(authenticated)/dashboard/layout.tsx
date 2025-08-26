@@ -2,6 +2,7 @@ import { getCustomerByUserId } from "@/actions/customers"
 import { auth, currentUser } from "@clerk/nextjs/server"
 import { redirect } from "next/navigation"
 import DashboardClientLayout from "./_components/layout-client"
+import { getOrganizationSubscription } from "@/actions/organizations"
 
 export default async function DashboardLayout({
   children
@@ -10,22 +11,22 @@ export default async function DashboardLayout({
 }) {
   const { userId, orgId } = await auth() 
 
+  const user = await currentUser() 
+
   if (!userId) {
     redirect("/login")
   }
 
-  const customer = await getCustomerByUserId(userId)
-
-  // jeżeli użytkownik jest w organizacji, pobierz jej membership z bazy
-  const orgMembership = orgId ? await getOrganizationSubscription(orgId) : null
-
-  const isPro =
-    customer?.membership === "pro" || orgMembership?.membership === "pro"
-
-  if (!isPro) {
-    redirect("/?redirect=dashboard#pricing")
+  // Require an active organization context before accessing dashboard
+  if (!orgId) {
+    redirect("/org-setup")
   }
 
+  // Optional plan gating removed to avoid redirecting away from dashboard/account
+
+  if (!user) {
+    redirect("/login")
+  }
 
   const userData = {
     name:
@@ -34,7 +35,7 @@ export default async function DashboardLayout({
         : user.firstName || user.username || "User",
     email: user.emailAddresses[0]?.emailAddress || "",
     avatar: user.imageUrl,
-    membership: customer?.membership || "pro"
+    membership: "pro"
   }
 
   return (

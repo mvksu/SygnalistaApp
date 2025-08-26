@@ -23,7 +23,6 @@ export const reportIntakeSchema = z.object({
   anonymous: z.boolean().default(true),
   contact: reporterContactSchema.optional(),
   attachments: z.array(attachmentClientSchema).max(5).default([]),
-  captchaToken: z.string().min(1, "Please complete the CAPTCHA"),
 })
 
 export type ReporterContact = z.infer<typeof reporterContactSchema>

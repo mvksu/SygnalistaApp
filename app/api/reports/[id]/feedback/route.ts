@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from "next/server"
 import { assertRoleInOrg, assertCanAccessReport } from "@/lib/authz"
 import { giveFeedback } from "@/src/server/services/reports"
 
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { userId, orgId, role } = await assertRoleInOrg(["ADMIN", "HANDLER"]) 
-    const reportId = params.id
+    const reportId = (await params).id
     await assertCanAccessReport({ orgId, userId, role, reportId })
     await giveFeedback({ orgId, reportId, actorId: userId })
     return NextResponse.json({ ok: true })

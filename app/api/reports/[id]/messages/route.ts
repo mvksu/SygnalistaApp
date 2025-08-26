@@ -9,8 +9,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     await assertCanAccessReport({ orgId, userId, role, reportId })
     const { body } = await request.json()
     if (!body) return NextResponse.json({ error: "Missing body" }, { status: 400 })
-    await addHandlerMessage({ orgId, reportId, body, actorId: userId })
-    return NextResponse.json({ ok: true })
+    const msg = await addHandlerMessage({ orgId, reportId, body, actorId: userId })
+    return NextResponse.json({ ok: true, messageId: msg.id })
   } catch (err: any) {
     return NextResponse.json({ error: `Internal server error: ${err.message}` }, { status: 500 })
   }

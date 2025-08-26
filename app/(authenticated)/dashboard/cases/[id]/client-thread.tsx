@@ -1,8 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 
 type ThreadItem = {
   id: string
@@ -22,6 +23,8 @@ export default function CaseThreadClient({ reportId, initialThread }: Props) {
   const [submitting, setSubmitting] = useState(false)
   const [actionLoading, setActionLoading] = useState<"ack" | "feedback" | null>(null)
   const [anonymousSend, setAnonymousSend] = useState(false)
+  const [files, setFiles] = useState<File[]>([])
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   async function postJson(url: string, body?: unknown) {
     const resp = await fetch(url, {
@@ -55,7 +58,30 @@ export default function CaseThreadClient({ reportId, initialThread }: Props) {
     if (!message.trim()) return
     setSubmitting(true)
     try {
-      await postJson(`/api/reports/${reportId}/messages`, { body: message.trim() })
+      const res = await postJson(`/api/reports/${reportId}/messages`, { body: message.trim() })
+      const { messageId } = await res.json()
+      // Upload attachments if any
+      for (const file of files) {
+        const checksum = "" // optional: compute client-side if desired
+        const presignRes = await fetch(`/api/files/presign`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            filename: file.name,
+            contentType: file.type || "application/octet-stream",
+            size: file.size,
+            checksum,
+            reportId,
+            messageId,
+          })
+        })
+        if (!presignRes.ok) throw new Error("Failed to presign upload")
+        const { uploadUrl, token } = await presignRes.json()
+        const formData = new FormData()
+        formData.append("file", file)
+        const uploadResp = await fetch(uploadUrl, { method: "POST", headers: token ? { authorization: `Bearer ${token}` } : undefined, body: formData })
+        if (!uploadResp.ok) throw new Error("Upload failed")
+      }
       setThread((prev) => [
         ...prev,
         {
@@ -66,6 +92,8 @@ export default function CaseThreadClient({ reportId, initialThread }: Props) {
         },
       ])
       setMessage("")
+      setFiles([])
+      if (fileInputRef.current) fileInputRef.current.value = ""
     } finally {
       setSubmitting(false)
     }
@@ -74,12 +102,22 @@ export default function CaseThreadClient({ reportId, initialThread }: Props) {
   return (
     <div className="space-y-6">
       <div className="flex gap-2">
-        <Button variant="outline" size="sm" onClick={acknowledge} disabled={actionLoading !== null}>
-          {actionLoading === "ack" ? "Acknowledging..." : "Acknowledge"}
-        </Button>
-        <Button variant="outline" size="sm" onClick={giveFeedback} disabled={actionLoading !== null}>
-          {actionLoading === "feedback" ? "Saving..." : "Feedback given"}
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="outline" size="sm" onClick={acknowledge} disabled={actionLoading !== null}>
+              {actionLoading === "ack" ? "Acknowledging..." : "Acknowledge"}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Mark case as acknowledged</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="outline" size="sm" onClick={giveFeedback} disabled={actionLoading !== null}>
+              {actionLoading === "feedback" ? "Saving..." : "Feedback given"}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Mark follow-up communication as sent</TooltipContent>
+        </Tooltip>
       </div>
 
       <div className="space-y-3">
@@ -88,7 +126,10 @@ export default function CaseThreadClient({ reportId, initialThread }: Props) {
             <div className="mb-1 text-xs text-muted-foreground">
               {m.sender} • {new Date(m.createdAt).toLocaleString()}
             </div>
-            <div className="whitespace-pre-wrap">{m.body}</div>
+            <div className="whitespace-pre-wrap flex items-start gap-2">
+              <span className="mt-1 inline-block" aria-hidden>📎</span>
+              <span>{m.body}</span>
+            </div>
           </div>
         ))}
       </div>
@@ -100,6 +141,12 @@ export default function CaseThreadClient({ reportId, initialThread }: Props) {
           placeholder="Add a message..."
           rows={3}
         />
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <input ref={fileInputRef} type="file" multiple className="block text-sm" onChange={e => setFiles(Array.from(e.target.files || []))} />
+          </TooltipTrigger>
+          <TooltipContent>Attach files (PDF, images, docs)</TooltipContent>
+        </Tooltip>
         <div className="flex gap-2">
           <Button size="sm" onClick={sendMessage} disabled={submitting}>
             {submitting ? "Sending..." : "Send"}

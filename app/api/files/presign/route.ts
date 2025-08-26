@@ -6,6 +6,7 @@ import { db } from "@/db"
 import { organizations } from "@/db/schema/organizations"
 import { reportingChannels } from "@/db/schema/reportingChannels"
 import { eq } from "drizzle-orm"
+import { attachments } from "@/db/schema/attachments"
 
 export async function POST(request: NextRequest) {
   try {
@@ -62,6 +63,18 @@ export async function POST(request: NextRequest) {
       reportId,
       messageId,
     })
+
+    // If this presign is for a message attachment, insert DB record now (upload follows on client)
+    if (reportId && messageId) {
+      await db.insert(attachments).values({
+        reportId,
+        messageId,
+        storageKey,
+        filename,
+        size,
+        contentHash: checksum,
+      })
+    }
 
     // Return the signed upload details (Supabase)
     return NextResponse.json({

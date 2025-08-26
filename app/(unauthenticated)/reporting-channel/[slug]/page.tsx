@@ -4,6 +4,7 @@ import { organizations } from "@/db/schema/organizations"
 import { eq } from "drizzle-orm"
 import ReportLandingClient from "./client-landing"
 import { reportCategories } from "@/db/schema/reportCategories"
+import { clerkClient } from "@clerk/nextjs/server"
 
 export default async function PublicReportLanding({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
@@ -14,6 +15,11 @@ export default async function PublicReportLanding({ params }: { params: Promise<
     .select({ id: reportCategories.id, name: reportCategories.name })
     .from(reportCategories)
     .where(eq(reportCategories.orgId, channel.orgId))
+  const cc = await clerkClient()
+  const orgImg = await cc.organizations.getOrganization({
+    organizationId: org?.clerkOrgId || ""
+  })
+  const orgImgUrl = orgImg.imageUrl
 
   return (
     <div className="container mx-auto max-w-3xl py-10">
@@ -26,6 +32,7 @@ export default async function PublicReportLanding({ params }: { params: Promise<
             channelSlug={channel.slug}
             categories={categories}
             captchaSiteKey={siteKey}
+            orgImgUrl={orgImgUrl || ""}
           />
         )
       })()}

@@ -7,6 +7,7 @@ import { Button } from "../ui/button"
 import { CaseListItem } from "@/src/server/services/cases"
 import { useEffect, useState } from "react"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "../ui/sheet"
+import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip"
 import { UserPlus } from "lucide-react"
 
 type CaseRow = {
@@ -27,13 +28,22 @@ type CaseRow = {
 export function CaseTable({ rows }: { rows: CaseRow[]  }) {
   const format = useMemo(() => (d?: string | Date | null) => (d ? new Date(d).toLocaleDateString() : "—"), [])
 
-  const chip = (state: "due" | "overdue" | "done") => {
+  const chip = (state: "due" | "overdue" | "done", dueAt?: string | Date) => {
     const map = {
       due: "bg-amber-100 text-amber-900",
       overdue: "bg-red-100 text-red-900",
       done: "bg-emerald-100 text-emerald-900",
     }
-    return <span className={`px-2 py-1 rounded text-xs ${map[state]}`}>{state}</span>
+    const remain = (() => {
+      if (!dueAt) return ""
+      const d = new Date(dueAt)
+      const ms = d.getTime() - Date.now()
+      const days = Math.ceil(ms / (1000 * 60 * 60 * 24))
+      if (state === "done") return ""
+      if (days >= 0) return `${days}d`
+      return `${Math.abs(days)}d late`
+    })()
+    return <span className={`px-2 py-1 rounded text-xs ${map[state]}`}>{state}{remain ? ` • ${remain}` : ""}</span>
   }
 
   return (
@@ -55,7 +65,7 @@ export function CaseTable({ rows }: { rows: CaseRow[]  }) {
         </thead>
         <tbody>
           {rows.map((r) => (
-            <tr key={r.id} className="border-t hover:bg-muted/30">
+            <tr key={r.id} className={`border-t hover:bg-muted/30 ${!r.acknowledgedAt ? "font-semibold" : "font-normal"}`}>
               <td className="p-2 font-mono">
                 <Link href={`/dashboard/cases/${r.id}`} className="text-primary hover:underline">
                   {r.caseId}
@@ -77,8 +87,22 @@ export function CaseTable({ rows }: { rows: CaseRow[]  }) {
               <td className="p-2">{format(r.createdAt)}</td>
               <td className="p-2">{"-"}</td>
               <td className="p-2">{format(r.ackDueAt)}</td>
-              <td className="p-2">{chip(r.ackStatus)}</td>
-              <td className="p-2">{chip(r.feedbackStatus)}</td>
+              <td className="p-2">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span>{chip(r.ackStatus, r.ackDueAt)}</span>
+                  </TooltipTrigger>
+                  <TooltipContent>Acknowledgement deadline</TooltipContent>
+                </Tooltip>
+              </td>
+              <td className="p-2">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span>{chip(r.feedbackStatus, r.feedbackDueAt || undefined)}</span>
+                  </TooltipTrigger>
+                  <TooltipContent>Feedback deadline</TooltipContent>
+                </Tooltip>
+              </td>
               <td className="p-2">{r.status}</td>
             </tr>
           ))}

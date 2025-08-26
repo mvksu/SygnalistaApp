@@ -9,14 +9,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { Button as UIButton } from "@/components/ui/button"
 import { getBrowserSupabase } from "@/lib/supabase/client"
-declare global {
-  interface Window {
-    grecaptcha?: {
-      ready: (cb: () => void) => void
-      execute: (siteKey: string, options: { action: string }) => Promise<string>
-    }
-  }
-}
 
 async function sha256(file: File): Promise<string> {
   const buf = await file.arrayBuffer()
@@ -29,7 +21,6 @@ async function sha256(file: File): Promise<string> {
 
 type Props = {
   categories: { id: string; name: string }[]
-  captchaSiteKey: string
   onSubmit?: (data: ReportIntake) => Promise<void>
   channelSlug?: string
 }
@@ -38,56 +29,9 @@ export default function ReportForm({
   categories,
   onSubmit,
   channelSlug,
-  captchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || ""
 }: Props) {
   type MediaRecorderConstructor = typeof MediaRecorder & {
     isTypeSupported?: (type: string) => boolean
-  }
-  // reCAPTCHA v3 script loader with timeout fallback
-  const recaptchaReadyRef = useRef<Promise<void> | null>(null)
-  const disableRecaptcha = (process.env.NEXT_PUBLIC_DISABLE_RECAPTCHA as string) === "true"
-  function ensureRecaptchaReady(): Promise<void> {
-    if (disableRecaptcha || !captchaSiteKey) return Promise.resolve()
-    if (!recaptchaReadyRef.current) {
-      recaptchaReadyRef.current = new Promise<void>(resolve => {
-        // If API already present, wait for ready
-        if (window.grecaptcha && typeof window.grecaptcha.ready === "function") {
-          window.grecaptcha.ready(() => resolve())
-          return
-        }
-        // Poll for availability (avoids dynamic script injection under strict CSP)
-        const started = Date.now()
-        const interval = window.setInterval(() => {
-          if (window.grecaptcha && typeof window.grecaptcha.ready === "function") {
-            window.clearInterval(interval)
-            window.grecaptcha.ready(() => resolve())
-          } else if (Date.now() - started > 5000) {
-            window.clearInterval(interval)
-            resolve()
-          }
-        }, 100)
-      })
-    }
-    return recaptchaReadyRef.current
-  }
-
-  async function getRecaptchaToken(): Promise<string> {
-    if (disableRecaptcha || !captchaSiteKey) return "dev-token"
-    const timeout = new Promise<string>(resolve => {
-      window.setTimeout(() => resolve(""), 5000)
-    })
-    const tokenPromise = (async () => {
-      await ensureRecaptchaReady()
-      if (!window.grecaptcha) return ""
-      try {
-        const token = await window.grecaptcha.execute(captchaSiteKey, { action: "report_submit" })
-        return token || ""
-      } catch {
-        return ""
-      }
-    })()
-    const result = await Promise.race([timeout, tokenPromise])
-    return result
   }
 
   const [values, setValues] = useState<ReportIntake>({
@@ -96,7 +40,6 @@ export default function ReportForm({
     anonymous: true,
     contact: undefined,
     attachments: [],
-    captchaToken: captchaSiteKey ? "" : "dev-token"
   })
   const [subject, setSubject] = useState("")
   const [files, setFiles] = useState<File[]>([])
@@ -133,7 +76,6 @@ export default function ReportForm({
     e.preventDefault()
     setSubmitting(true)
     setErrors({})
-    const token = await getRecaptchaToken()
     const parsed = validator.safeParse(values)
   
 
@@ -147,14 +89,6 @@ export default function ReportForm({
       setSubmitting(false)
       return
     }
-
-    // if (!parsed.success) {
-    //   setErrors({
-    //     captchaToken: "Captcha could not be verified. Please try again."
-    //   })
-    //   setSubmitting(false)
-    //   return
-    // }
 
     try {
       // If we have files, presign and upload them first to get storageKeys
@@ -411,13 +345,6 @@ export default function ReportForm({
       onSubmit={handleSubmit}
       className="border-secondary rounded-2 space-y-4 border-2 p-8"
     >
-      {/* {!disableRecaptcha && captchaSiteKey ? (
-        <Script
-          id="recaptcha-v3-script"
-          src={`https://www.google.com/recaptcha/api.js?render=${encodeURIComponent(captchaSiteKey)}`}
-          strategy="afterInteractive"
-        />
-      ) : null} */}
       <div>
         <h1 className="text-2xl font-bold">Report an issue</h1>
         <p className="text-muted-foreground text-sm">
@@ -680,11 +607,6 @@ export default function ReportForm({
             />
           </div>
         </div>
-      )}
-
-      {/* reCAPTCHA v3 runs on submit. No widget to render. */}
-      {errors["captchaToken"] && (
-        <p className="text-sm text-red-600">{errors["captchaToken"]}</p>
       )}
 
       <Button type="submit" disabled={submitting}>

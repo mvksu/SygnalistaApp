@@ -5,10 +5,8 @@ import { db } from '@/db'
 import { and, eq, inArray } from 'drizzle-orm'
 import { reportAssignees } from '@/db/schema/reportAssignees'
 import { reports } from '@/db/schema/reports'
-import { getActorOrgMemberId } from '@/db/schema/orgMembers'
+import { getActorOrgMemberId } from '@/src/server/services/orgMembers'
 import { logReport } from '@/src/server/services/reportLogs'
-import { users } from '@/db/schema/users'
-import { getDbOrgIdForClerkOrg } from '@/src/server/orgs'
 
 const Body = z.object({
   add: z.array(z.string().uuid()).optional(),
@@ -58,25 +56,16 @@ export async function POST(
     return NextResponse.json({ error: 'Invalid body' }, { status: 400 })
   }
 
-  const { userId: clerkUserId, orgId: clerkOrgId, role } = await assertRoleInOrg(["ADMIN", "HANDLER"]) 
-
-  // Map Clerk IDs → DB IDs
-  const dbOrgId = await getDbOrgIdForClerkOrg(clerkOrgId)
-  if (!dbOrgId) {
-    return NextResponse.json({ error: 'Organization not found' }, { status: 404 })
-  }
-  const dbUser = await db.query.users.findFirst({ where: eq(users.clerkId, clerkUserId) })
+  const { userId: dbUserId, orgId: dbOrgId, role } = await assertRoleInOrg(["ADMIN", "HANDLER"]) 
 
   // Ensure the report belongs to the current org (DB)
   const report = await db.query.reports.findFirst({ where: and(eq(reports.id, reportId), eq(reports.orgId, dbOrgId)) })
   if (!report) {
     return NextResponse.json({ error: 'Report not found' }, { status: 404 })
   }
-  await assertCanAccessReport({ orgId: dbOrgId, userId: clerkUserId, role, reportId })
+  await assertCanAccessReport({ orgId: dbOrgId, userId: dbUserId, role, reportId })
 
-  const actorOrgMemberId = dbUser
-    ? await getActorOrgMemberId({ userId: dbUser.id, orgId: dbOrgId })
-    : null
+  const actorOrgMemberId = await getActorOrgMemberId(dbUserId, dbOrgId)
 
   // Add assignees
   if (parsedBody.add && parsedBody.add.length > 0) {

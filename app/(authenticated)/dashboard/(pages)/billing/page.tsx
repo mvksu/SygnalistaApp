@@ -1,6 +1,7 @@
 import { getBillingDataByUserId } from "@/actions/customers"
 import { auth } from "@clerk/nextjs/server"
 import { AlertCircle, CreditCard } from "lucide-react"
+import PlanSelector from "./components/PlanSelector"
 
 export default async function BillingPage() {
   const { userId } = await auth()
@@ -50,11 +51,9 @@ export default async function BillingPage() {
       </div>
 
       <div className="mt-8">
-        <h2 className="text-2xl font-bold">Subscription Details</h2>
-        <p className="text-muted-foreground">
-          Your current subscription plan is{" "}
-          <span className="font-medium">{customerData.membership}</span>.
-        </p>
+        <h2 className="text-2xl font-bold">Subscription Plans</h2>
+        <p className="text-muted-foreground mb-6">Choose the plan that fits your organization. Your current plan is <span className="font-medium">{customerData.membership}</span>.</p>
+        <PlanSelector currentPlan={customerData.membership} />
       </div>
     </div>
   )

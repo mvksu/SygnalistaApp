@@ -7,6 +7,7 @@ import Link from "next/link"
 import { setChannelDefaultLanguage, deleteReportingChannelAction } from "@/actions/reporting-channels"
 import { CopyButton } from "@/components/ui/copy-button"
 import { Link as LinkIcon, ExternalLink, Copy as CopyIcon, Image as ImageIcon } from "lucide-react"
+import { clerkClient } from "@clerk/nextjs/server"
 
 export default async function ReportingChannelDetail({ params }: { params: Promise<{ id: string }> }) {
 	const { orgId: clerkOrgId } = await auth()
@@ -16,7 +17,14 @@ export default async function ReportingChannelDetail({ params }: { params: Promi
 
 	const channel = await db.query.reportingChannels.findFirst({ where: eq(reportingChannels.id, (await params).id) })
 	if (!channel || channel.orgId !== orgId) return null
-	const org = await db.query.organizations.findFirst({ where: eq(organizations.id, orgId) })
+  const org = await db.query.organizations.findFirst({ where: eq(organizations.id, orgId) })
+  
+  const cc = await clerkClient()
+  const orgImg = await cc.organizations.getOrganization({
+    organizationId: clerkOrgId
+  })
+  const orgImgUrl = orgImg.imageUrl
+
 
 	return (
     <div className="space-y-6">
@@ -66,8 +74,8 @@ export default async function ReportingChannelDetail({ params }: { params: Promi
                 <span>Organization logo</span>
               </div>
               <div className="flex items-center gap-2">
-                {org?.logoUrl ? (
-                  <img src={org.logoUrl} alt="Organization logo" className="h-8 w-8 rounded object-cover" />
+                {orgImgUrl ? (
+                  <img src={orgImgUrl} alt="Organization logo" className="h-8 w-8 rounded object-cover" />
                 ) : (
                   <span className="text-muted-foreground text-xs">No logo uploaded</span>
                 )}

@@ -14,8 +14,9 @@ import { CaseTable } from "@/components/cases/case-table"
 import { reports } from "@/db/schema/reports"
 import { reportCategories } from "@/db/schema/reportCategories"
 import { reportAssignees } from "@/db/schema/reportAssignees"
-import { orgMembers, getActorOrgMemberId } from "@/db/schema/orgMembers"
+import { orgMembers } from "@/db/schema/orgMembers"
 import { listAssignedCaseRows } from "@/src/server/services/cases"
+import { getActorOrgMemberId } from "@/actions/orgMembers"
 
 async function getOrCreateUserId() {
   const { userId: clerkId } = await auth()

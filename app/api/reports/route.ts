@@ -8,7 +8,6 @@ import { attachments } from "@/db/schema/attachments"
 import { eq, and } from "drizzle-orm"
 import { reportIntakeSchema } from "@/lib/validation/report"
 import { isAllowedMimeType, getFileSizeLimit } from "@/lib/validation/upload"
-import { verifyRecaptchaV3 } from "@/lib/captcha"
 import { generateCaseId, generateCaseKey, hashCaseKey } from "@/lib/ids"
 import { encryptField } from "@/lib/crypto/encryption"
 import { auth } from "@clerk/nextjs/server"
@@ -53,15 +52,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid data", details: parsed.error.issues }, { status: 400 })
     }
 
-    const { categoryId, body: messageBody, anonymous, contact, captchaToken, attachments: uploaded } = parsed.data
+    const { categoryId, body: messageBody, anonymous, contact,  attachments: uploaded } = parsed.data
 
     // Rate limiting should be applied by a middleware in production; optionally add lightweight guard here
     const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || undefined
 
-    // const captcha = await verifyRecaptchaV3(captchaToken, ip, { expectedAction: "report_submit", minScore: 0.3 })
-    // if (!captcha.success) {
-    //   return NextResponse.json({ error: "CAPTCHA failed", details: captcha.error }, { status: 400 })
-    // }
 
     const now = new Date()
     const org = await db.query.organizations.findFirst({ where: eq(organizations.id, orgId!) })
@@ -86,6 +81,7 @@ export async function POST(request: NextRequest) {
         subject: (body as any)?.subject || null,
         status: "OPEN",
         createdAt: now,
+        ackDueAt: new Date(now.getTime() + (((org?.ackDays as number) ?? 7) * 24 * 60 * 60 * 1000)),
         feedbackDueAt: addMonths(now, ((org?.feedbackMonths as number) ?? 3)),
         reporterMode,
         reporterContactEncrypted: contactEncrypted ? JSON.stringify(contactEncrypted) : null,

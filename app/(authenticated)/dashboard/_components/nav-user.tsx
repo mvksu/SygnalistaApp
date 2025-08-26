@@ -29,6 +29,7 @@ import {
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import Link from "next/link"
+import { useEffect, useState } from "react"
 
 export function NavUser({
   user
@@ -43,6 +44,30 @@ export function NavUser({
   const { isMobile } = useSidebar()
   const { theme, setTheme } = useTheme()
   const { signOut } = useClerk()
+  const [role, setRole] = useState<"ADMIN" | "HANDLER" | "AUDITOR" | null>(null)
+  const [roleLoaded, setRoleLoaded] = useState(false)
+
+  useEffect(() => {
+    let aborted = false
+    ;(async () => {
+      try {
+        const res = await fetch("/api/auth/role", { cache: "no-store" })
+        const data = await res.json()
+        if (!aborted) {
+          setRole((data?.role as typeof role) ?? null)
+          setRoleLoaded(true)
+        }
+      } catch {
+        if (!aborted) {
+          setRole(null)
+          setRoleLoaded(true)
+        }
+      }
+    })()
+    return () => {
+      aborted = true
+    }
+  }, [])
 
   const getInitials = (name: string) => {
     const words = name.split(" ")
@@ -69,12 +94,22 @@ export function NavUser({
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{user.name}</span>
-                <Badge
-                  variant={user.membership === "pro" ? "default" : "secondary"}
-                  className="mt-0.5 w-fit px-2 py-0 text-xs"
-                >
-                  {user.membership === "pro" ? "Pro" : "Free"}
-                </Badge>
+                <div className="flex gap-1 mt-0.5">
+                  <Badge
+                    variant={user.membership === "pro" ? "default" : "secondary"}
+                    className="w-fit px-2 py-0 text-xs"
+                  >
+                    {user.membership === "pro" ? "Pro" : "Free"}
+                  </Badge>
+                  {roleLoaded && (
+                    <Badge
+                      variant="outline"
+                      className="w-fit px-2 py-0 text-xs"
+                    >
+                      {role ? role.charAt(0) + role.slice(1).toLowerCase() : "User"}
+                    </Badge>
+                  )}
+                </div>
               </div>
               <ChevronsUpDown className="ml-auto size-4" />
             </SidebarMenuButton>

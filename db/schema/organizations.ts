@@ -12,6 +12,7 @@ export const plan = pgEnum("plan", ["free", "pro"]) // extend later as needed
 
 export const organizations = pgTable("organizations", {
   id: uuid("id").defaultRandom().primaryKey(),
+  clerkOrgId: text("clerk_org_id").unique().notNull(),
   name: text("name").notNull(),
   slug: text("slug").notNull().unique(),
   plan: plan("plan").default("free").notNull(),

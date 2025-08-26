@@ -2,14 +2,26 @@ import { auth } from "@clerk/nextjs/server"
 import { db } from "@/db"
 import { reportingChannels } from "@/db/schema/reportingChannels"
 import Link from "next/link"
+import { eq, and } from "drizzle-orm"
 
 async function createDefaultChannel(orgId: string) {
+	// Check existing default 'links' channel for org to avoid unique constraint error
+	const existing = await db.query.reportingChannels.findFirst({ where: and(eq(reportingChannels.orgId, orgId), eq(reportingChannels.type, "links")) })
+	if (existing) return existing
+
 	const slug = crypto.randomUUID()
-	const [inserted] = await db
-		.insert(reportingChannels)
-		.values({ orgId, name: "Default", slug, defaultLanguage: "auto" })
-		.returning()
-	return inserted
+	try {
+		const [inserted] = await db
+			.insert(reportingChannels)
+			.values({ orgId, name: "Default", slug, defaultLanguage: "auto" })
+			.returning()
+		return inserted
+	} catch (e) {
+		// In case of race condition, fetch and return the existing
+		const fallback = await db.query.reportingChannels.findFirst({ where: and(eq(reportingChannels.orgId, orgId), eq(reportingChannels.type, "links")) })
+		if (fallback) return fallback
+		throw e
+	}
 }
 
 export default async function NewReportingChannelPage() {

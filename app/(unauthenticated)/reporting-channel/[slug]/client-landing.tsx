@@ -7,17 +7,22 @@ type Props = {
   orgName: string
   channelSlug: string
   categories: { id: string; name: string }[]
-  captchaSiteKey: string
+  orgImgUrl: string
 }
 
-export default function ReportLandingClient({ orgName, channelSlug, categories, captchaSiteKey }: Props) {
+export default function ReportLandingClient({ orgName, channelSlug, categories, orgImgUrl }: Props) {
   const [started, setStarted] = useState(false)
 
   return (
     <div className="space-y-8">
       {!started && (
         <>
-          <header className="space-y-2">
+          <header className="space-y-2 flex flex-col items-start">
+            <img
+              src={orgImgUrl}
+              alt={`${orgName} logo`}
+              className="h-12 w-12 object-contain mb-2"
+            />
             <h1 className="text-2xl font-semibold">{orgName} Whistleblower Channel</h1>
             <p className="text-muted-foreground">
               As an employee, you can report serious matters anonymously or if you have reasonable suspicion of such matters.
@@ -74,7 +79,7 @@ export default function ReportLandingClient({ orgName, channelSlug, categories, 
 
       {started && (
         <section id="report-form" className="space-y-4">
-          <ReportForm categories={categories} captchaSiteKey={captchaSiteKey} channelSlug={channelSlug} />
+          <ReportForm categories={categories} channelSlug={channelSlug} />
         </section>
       )}
     </div>
