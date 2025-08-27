@@ -2,11 +2,25 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { z } from "zod"
-import Script from "next/script"
 import { reportIntakeSchema, type ReportIntake } from "@/lib/validation/report"
 import { Button } from "tweakcn/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
+
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Checkbox } from "@/components/ui/checkbox"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+
 import { getBrowserSupabase } from "@/lib/supabase/client"
 
 async function sha256(file: File): Promise<string> {
@@ -42,6 +56,7 @@ export default function ReportForm({
   })
   const [subject, setSubject] = useState("")
   const [files, setFiles] = useState<File[]>([])
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
 
@@ -367,7 +382,10 @@ export default function ReportForm({
         <div className="grid gap-2 md:grid-cols-2">
           <Button
             type="button"
-            className={`rounded border p-3 text-left ${!values.anonymous ? "border-primary" : ""}`}
+            variant="outline"
+            className={`p-3 text-left justify-start ${
+              !values.anonymous ? "border-primary" : ""
+            }`}
             onClick={() => setField("anonymous", false)}
             variant="outline"
             size="sm"
@@ -379,7 +397,10 @@ export default function ReportForm({
           </Button>
           <Button
             type="button"
-            className={`rounded border p-3 text-left ${values.anonymous ? "border-primary" : ""}`}
+            variant="outline"
+            className={`p-3 text-left justify-start ${
+              values.anonymous ? "border-primary" : ""
+            }`}
             onClick={() => setField("anonymous", true)}
             variant="outline"
             size="sm"
@@ -397,18 +418,21 @@ export default function ReportForm({
         <label className="text-sm font-medium">
           Select categories associated with the case
         </label>
-        <select
-          className="w-full rounded-md border px-2 py-2"
+        <Select
           value={values.categoryId}
-          onChange={e => setField("categoryId", e.target.value)}
+          onValueChange={val => setField("categoryId", val)}
         >
-          <option value="">Select a category</option>
-          {categories.map(c => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger>
+            <SelectValue placeholder="Select a category" />
+          </SelectTrigger>
+          <SelectContent>
+            {categories.map(c => (
+              <SelectItem key={c.id} value={c.id}>
+                {c.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         {errors["categoryId"] && (
           <p className="text-sm text-red-600">{errors["categoryId"]}</p>
         )}
@@ -429,6 +453,85 @@ export default function ReportForm({
 
       <div className="space-y-2">
         <label className="text-sm font-medium">Files</label>
+
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button type="button" variant="secondary">
+              Add attachments
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-80">
+            <div className="space-y-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                multiple
+                onChange={e => {
+                  const list = e.target.files ? Array.from(e.target.files) : []
+                  setFiles(prev => {
+                    const next = [...prev, ...list]
+                    setValues(v => ({
+                      ...v,
+                      attachments: next.map(f => ({
+                        filename: f.name,
+                        size: f.size,
+                        contentType: f.type,
+                      })),
+                    }))
+                    return next
+                  })
+                }}
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                Choose files
+              </Button>
+              {files.length > 0 && (
+                <ul className="space-y-1 text-sm">
+                  {files.map((f, idx) => (
+                    <li
+                      key={idx}
+                      className="flex items-center justify-between rounded border px-2 py-1"
+                    >
+                      <span className="max-w-[75%] truncate">
+                        {f.name}{" "}
+                        <span className="text-muted-foreground">
+                          ({Math.ceil(f.size / 1024)} KB)
+                        </span>
+                      </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-600 hover:text-red-600"
+                        onClick={() =>
+                          setFiles(prev => {
+                            const next = prev.filter((_, i) => i !== idx)
+                            setValues(v => ({
+                              ...v,
+                              attachments: next.map(f => ({
+                                filename: f.name,
+                                size: f.size,
+                                contentType: f.type,
+                              })),
+                            }))
+                            return next
+                          })
+                        }
+                      >
+                        Remove
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
         <div className="flex items-center gap-2">
           <input
             id="file-input"
@@ -511,14 +614,71 @@ export default function ReportForm({
 
       {/* Voice message */}
       <div className="space-y-2">
-        <div className="rounded-lg border p-4">
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="text-sm font-medium">Voice message</div>
-              <div className="text-muted-foreground text-xs">
-                Record up to 15 minutes and attach it to your report.
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button type="button" variant="secondary">
+              Voice message
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-80">
+            <div className="space-y-2">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="text-sm font-medium">Voice message</div>
+                  <div className="text-muted-foreground text-xs">
+                    Record up to 15 minutes and attach it to your report.
+                  </div>
+                </div>
+                {audioUrl && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-600 hover:text-red-600"
+                    onClick={removeVoiceAttachment}
+                  >
+                    Remove
+                  </Button>
+                )}
               </div>
+              <div className="flex items-center gap-4">
+                <div className="bg-muted h-3 w-32 overflow-hidden rounded">
+                  <div
+                    className="bg-primary h-full transition-[width]"
+                    style={{
+                      width: `${Math.min(100, Math.round(audioLevel * 100))}%`,
+                    }}
+                  />
+                </div>
+                <div className="text-muted-foreground text-xs">
+                  {Math.floor(recordSeconds / 60)}:
+                  {String(recordSeconds % 60).padStart(2, "0")}
+                </div>
+                {!isRecording ? (
+                  <Button type="button" onClick={startRecording}>
+                    Start recording
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    onClick={stopRecording}
+                    variant="destructive"
+                  >
+                    Stop
+                  </Button>
+                )}
+              </div>
+              {recordError && (
+                <p className="text-xs text-red-600">{recordError}</p>
+              )}
+              {audioUrl && (
+                <audio controls src={audioUrl} className="w-full" />
+              )}
             </div>
+
+          </PopoverContent>
+        </Popover>
+=======
             {audioUrl && (
               <Button
                 type="button"
@@ -575,16 +735,23 @@ export default function ReportForm({
             </div>
           )}
         </div>
+
       </div>
 
       <div className="flex items-center gap-2">
-        <input
+        <Checkbox
           id="anonymous"
-          type="checkbox"
           checked={values.anonymous}
-          onChange={e => setField("anonymous", e.target.checked)}
+          onCheckedChange={checked =>
+            setField("anonymous", checked === true)
+          }
         />
-        <label htmlFor="anonymous">Submit anonymously</label>
+        <label
+          htmlFor="anonymous"
+          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+        >
+          Submit anonymously
+        </label>
       </div>
 
       {!values.anonymous && (
