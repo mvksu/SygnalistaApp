@@ -1,6 +1,6 @@
 import { auth } from "@clerk/nextjs/server"
 import { listRegister } from "@/src/server/services/register"
-import { Button } from "tweakcn/ui/button"
+import { Button } from "@/components/ui/button"
 
 export default async function RegisterPage({ searchParams }: { searchParams: { status?: string; categoryId?: string; q?: string } }) {
   const { orgId: clerkOrgId } = await auth()

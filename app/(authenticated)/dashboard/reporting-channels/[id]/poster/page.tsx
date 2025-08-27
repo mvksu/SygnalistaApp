@@ -4,7 +4,7 @@ import { db } from "@/db"
 import { reportingChannels } from "@/db/schema/reportingChannels"
 import { organizations } from "@/db/schema/organizations"
 import { eq } from "drizzle-orm"
-import { Button } from "tweakcn/ui/button"
+import { Button } from "@/components/ui/button"
 
 export default async function PosterPage({ params }: { params: { id: string } }) {
   const channel = await db.query.reportingChannels.findFirst({ where: eq(reportingChannels.id, params.id) })

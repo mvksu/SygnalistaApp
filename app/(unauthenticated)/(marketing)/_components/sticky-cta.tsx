@@ -1,6 +1,6 @@
 "use client"
 
-import { Button } from "tweakcn/ui/button"
+import { Button } from "@/components/ui/button"
 import { AnimatePresence, motion } from "framer-motion"
 import { ArrowRight } from "lucide-react"
 import Link from "next/link"

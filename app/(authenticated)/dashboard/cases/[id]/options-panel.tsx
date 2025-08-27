@@ -1,6 +1,6 @@
 "use client"
 
-import { Button } from "tweakcn/ui/button"
+import { Button } from "@/components/ui/button"
 
 export const OptionsPanel = () => {
   return (

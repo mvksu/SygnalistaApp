@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm"
 import Link from "next/link"
 import { CopyButton } from "@/components/ui/copy-button"
 import { Link as LinkIcon, ExternalLink, QrCode } from "lucide-react"
-import { Button } from "tweakcn/ui/button"
+import { Button } from "@/components/ui/button"
 
 export default async function ReportingChannelsPage() {
 	const { orgId: clerkOrgId } = await auth()

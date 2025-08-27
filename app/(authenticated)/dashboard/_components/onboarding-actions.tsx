@@ -1,6 +1,6 @@
 "use client"
 
-import { Button } from "tweakcn/ui/button"
+import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { useEffect, useState } from "react"
 import { X } from "lucide-react"
