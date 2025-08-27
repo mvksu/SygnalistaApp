@@ -168,7 +168,7 @@ export type CaseTableRow = {
   caseId: string
   subject?: string
   category: string
-  assignees: { name: string }[]
+  assignees: { id?: string; name: string }[]
   status: string
   createdAt: Date
   acknowledgedAt: Date | null

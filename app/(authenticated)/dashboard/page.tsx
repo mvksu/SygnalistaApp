@@ -17,6 +17,13 @@ import { reportAssignees } from "@/db/schema/reportAssignees"
 import { orgMembers } from "@/db/schema/orgMembers"
 import { listAssignedCaseRows } from "@/src/server/services/cases"
 import { getActorOrgMemberId } from "@/actions/orgMembers"
+import { DataTable } from "./_components/data-table"
+import type { DataTableRow } from "./_components/data-table"
+import { ChartPieDonut } from "./_components/chart-pie-donut"
+import { ChartBarMixed } from "./_components/chart-bar-mixed"
+import { SectionCards } from "./_components/section-cards"
+import { ChartAreaInteractive } from "./_components/chart-area-interactive"
+
 
 async function getOrCreateUserId() {
   const { userId: clerkId } = await auth()
@@ -65,6 +72,7 @@ export default async function Page() {
       assignedToMe = await listAssignedCaseRows(dbOrgId, memberId)
     }
   }
+
   
   return (
     <div className="space-y-6">
@@ -190,6 +198,12 @@ export default async function Page() {
           )
         )}
       </div>
+      <div className="flex flex-col gap-4">
+        <SectionCards />
+      </div>
+      <div className="px-4 lg:px-6">
+        <ChartAreaInteractive />
+      </div>
 
       <div className="grid gap-4 md:grid-cols-3">
         <div className="rounded-md border p-4">
@@ -212,15 +226,18 @@ export default async function Page() {
         </div>
       </div>
 
-      <div className="rounded-md border p-4">
-        <div className="mb-2 font-medium">Assigned to me</div>
-        {assignedToMe.length === 0 ? (
-          <div className="text-muted-foreground text-sm">No items assigned.</div>
-        ) : (
-          <div className="text-muted-foreground text-sm">
-            <CaseTable rows={assignedToMe} />
+      <div className="mb-4 rounded-md border p-4">
+        <div className="my-6">
+          <DataTable data={assignedToMe as unknown as DataTableRow[]} />
+        </div>
+        <div className="flex gap-4 px-4 lg:px-6">
+          <div className="basis-1/2">
+            <ChartPieDonut />
           </div>
-        )}
+          <div className="basis-1/2">
+            <ChartBarMixed />
+          </div>
+        </div>
       </div>
     </div>
   )

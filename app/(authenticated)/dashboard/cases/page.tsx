@@ -5,6 +5,7 @@ import { db } from "@/db"
 import { reportCategories } from "@/db/schema/reportCategories"
 import { CasesControls } from "./cases-controls"
 import { eq } from "drizzle-orm"
+import { DataTable } from "../_components/data-table"
 
 export default async function CasesPage({
   searchParams
@@ -113,8 +114,7 @@ export default async function CasesPage({
           .from(reportCategories)
           .where(eq(reportCategories.orgId, orgId))}
       />
-
-      <CaseTable rows={rows} />
+      <DataTable data={rows} />
     </div>
   )
 }

@@ -15,7 +15,7 @@ type CaseRow = {
   caseId: string
   subject?: string
   category: string
-  assignees: { id: string; name: string }[]
+  assignees: { id?: string; name: string }[]
   status: string
   createdAt: string | Date
   acknowledgedAt: string | Date | null
