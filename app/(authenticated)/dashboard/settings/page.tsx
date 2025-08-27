@@ -5,6 +5,7 @@ import { organizations } from "@/db/schema/organizations"
 import { eq } from "drizzle-orm"
 import { updateOrgSettings } from "@/src/server/services/settings"
 import { addCategory, setCategoryActive } from "@/actions/categories"
+import { Button } from "tweakcn/ui/button"
 
 export default async function SettingsPage() {
   const { orgId: clerkOrgId } = await auth()
@@ -58,7 +59,9 @@ export default async function SettingsPage() {
             <label htmlFor="anonymousAllowed" className="text-sm">Allow anonymous reports</label>
           </div>
           <div>
-            <button type="submit" className="rounded bg-primary px-3 py-2 text-sm text-primary-foreground">Save</button>
+            <Button type="submit" className="px-3 py-2 text-sm" variant="primary" size="sm">
+              Save
+            </Button>
           </div>
         </form>
       </section>
@@ -83,7 +86,9 @@ export default async function SettingsPage() {
                 <label className="text-xs text-muted-foreground">Name</label>
                 <input name="name" className="rounded border px-2 py-1" placeholder="Category name" />
               </div>
-              <button type="submit" className="rounded bg-primary px-3 py-1 text-sm text-primary-foreground">Save</button>
+              <Button type="submit" className="px-3 py-1 text-sm" variant="primary" size="sm">
+                Save
+              </Button>
             </form>
           </div>
         </details>
@@ -103,7 +108,9 @@ export default async function SettingsPage() {
                   <td className="p-2">{c.active ? "Active" : "Inactive"}</td>
                   <td className="p-2">
                     <form action={async () => { "use server"; await setCategoryActive(c.id, !c.active) }}>
-                      <button type="submit" className="rounded border px-2 py-1 text-xs">{c.active ? "Deactivate" : "Activate"}</button>
+                      <Button type="submit" className="px-2 py-1 text-xs" variant="outline" size="sm">
+                        {c.active ? "Deactivate" : "Activate"}
+                      </Button>
                     </form>
                   </td>
                 </tr>

@@ -1,6 +1,6 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
+import { Button } from "tweakcn/ui/button"
 import { AnimatePresence, motion } from "framer-motion"
 import { ArrowRight } from "lucide-react"
 import Link from "next/link"
@@ -40,10 +40,12 @@ export function StickyCTA() {
                 </Link>
               </Button>
               {/* Close button */}
-              <button
+              <Button
                 aria-label="Dismiss"
                 onClick={() => setDismissed(true)}
-                className="hover:bg-accent ml-2 rounded-full p-1"
+                className="ml-2 rounded-full p-1 hover:bg-accent"
+                variant="ghost"
+                size="icon"
               >
                 <svg width="16" height="16" fill="none" viewBox="0 0 16 16">
                   <path
@@ -54,7 +56,7 @@ export function StickyCTA() {
                     d="M4 4l8 8m0-8l-8 8"
                   />
                 </svg>
-              </button>
+              </Button>
             </div>
           </motion.div>
 
@@ -66,10 +68,12 @@ export function StickyCTA() {
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
             className="border-border bg-card fixed right-6 bottom-6 z-50 hidden max-w-sm min-w-[300px] rounded-lg border p-6 shadow-xl md:block"
           >
-            <button
+            <Button
               aria-label="Dismiss"
               onClick={() => setDismissed(true)}
-              className="hover:bg-accent absolute top-3 right-3 rounded-full p-1"
+              className="absolute top-3 right-3 rounded-full p-1 hover:bg-accent"
+              variant="ghost"
+              size="icon"
             >
               <svg width="18" height="18" fill="none" viewBox="0 0 18 18">
                 <path
@@ -80,7 +84,7 @@ export function StickyCTA() {
                   d="M5 5l8 8m0-8l-8 8"
                 />
               </svg>
-            </button>
+            </Button>
             <div className="space-y-4">
               <div>
                 <p className="text-muted-foreground text-sm font-medium">

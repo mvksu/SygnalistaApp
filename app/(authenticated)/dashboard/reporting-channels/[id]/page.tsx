@@ -8,6 +8,7 @@ import { setChannelDefaultLanguage, deleteReportingChannelAction } from "@/actio
 import { CopyButton } from "@/components/ui/copy-button"
 import { Link as LinkIcon, ExternalLink, Copy as CopyIcon, Image as ImageIcon } from "lucide-react"
 import { clerkClient } from "@clerk/nextjs/server"
+import { Button } from "tweakcn/ui/button"
 
 export default async function ReportingChannelDetail({ params }: { params: Promise<{ id: string }> }) {
 	const { orgId: clerkOrgId } = await auth()
@@ -36,9 +37,15 @@ export default async function ReportingChannelDetail({ params }: { params: Promi
 			</div>
         <div className="space-y-4">
           <div className="flex items-center gap-4 border-b">
-            <button className="border-b-2 border-primary px-3 py-2 text-sm font-medium">Links</button>
-            <button className="px-3 py-2 text-sm text-muted-foreground" disabled>Phone hotline</button>
-            <button className="px-3 py-2 text-sm text-muted-foreground" disabled>Email</button>
+            <Button className="border-b-2 border-primary font-medium" variant="link" size="sm">
+              Links
+            </Button>
+            <Button className="text-muted-foreground" variant="link" size="sm" disabled>
+              Phone hotline
+            </Button>
+            <Button className="text-muted-foreground" variant="link" size="sm" disabled>
+              Email
+            </Button>
           </div>
         </div>
         <div className="grid gap-6 lg:grid-cols-2">
@@ -81,7 +88,9 @@ export default async function ReportingChannelDetail({ params }: { params: Promi
                 )}
                 <form action={async (formData: FormData) => {"use server"}} className="flex items-center gap-2">
                   <input type="file" name="logo" accept="image/*" className="text-xs" />
-                  <button type="submit" className="rounded bg-primary px-2 py-1 text-primary-foreground">Upload</button>
+                  <Button type="submit" className="px-2 py-1" variant="primary" size="sm">
+                    Upload
+                  </Button>
                 </form>
               </div>
             </div>
@@ -104,7 +113,9 @@ export default async function ReportingChannelDetail({ params }: { params: Promi
                                     <option value="en">English</option>
                                     <option value="pl">Polski</option>
                                 </select>
-                                <button type="submit" className="rounded bg-primary px-2 py-1 text-primary-foreground">Save</button>
+                                <Button type="submit" className="px-2 py-1" variant="primary" size="sm">
+                                  Save
+                                </Button>
                             </form>
 							</div>
 						</div>
@@ -122,7 +133,9 @@ export default async function ReportingChannelDetail({ params }: { params: Promi
 							</div>
                         <form action={deleteReportingChannelAction} className="pt-2">
                             <input type="hidden" name="id" value={channel.id} />
-                            <button type="submit" className="rounded border px-3 py-2 text-sm text-destructive">Delete channel</button>
+                            <Button type="submit" className="px-3 py-2 text-sm" variant="destructive" size="sm">
+                              Delete channel
+                            </Button>
                         </form>
 						</div>
 					</div>

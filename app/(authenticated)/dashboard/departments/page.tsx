@@ -16,6 +16,7 @@ import {
   TableCell,
 } from "@/components/ui/table"
 
+
 export default async function DepartmentsPage() {
   const { orgId: clerkOrgId } = await auth()
   if (!clerkOrgId) return null
@@ -33,8 +34,19 @@ export default async function DepartmentsPage() {
           </p>
         </div>
         <form action="/api/departments" method="post" className="flex gap-2">
+
+          <input
+            name="name"
+            className="rounded border px-3 py-2 text-sm"
+            placeholder="New department name"
+          />
+          <Button className="px-3 py-2 text-sm" variant="primary" size="sm">
+            Add
+          </Button>
+
           <Input name="name" placeholder="New department name" />
           <Button type="submit">Add</Button>
+
         </form>
         <Card>
           <Table>

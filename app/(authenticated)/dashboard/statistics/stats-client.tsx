@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import { Button } from "tweakcn/ui/button"
 import {
   Bar,
   CartesianGrid,
@@ -67,14 +68,16 @@ export default function ChartsClient({ kpis, volume, lifecycle, categoryRisk }: 
         <div className="mb-2 text-sm font-medium">Cases by month (stacked by category)</div>
         <div className="flex flex-wrap gap-2 text-xs">
           {topCats.map((c: string) => (
-            <button
+            <Button
               key={c}
               onMouseEnter={() => setHoverCategory(c)}
               onMouseLeave={() => setHoverCategory(null)}
-              className={`rounded border px-2 py-1 ${hoverCategory === c ? "bg-primary text-white" : "bg-background"}`}
+              className={`${hoverCategory === c ? "bg-primary text-white" : "bg-background"} px-2 py-1`}
+              variant="outline"
+              size="sm"
             >
               {c}
-            </button>
+            </Button>
           ))}
         </div>
         <div className="h-72">

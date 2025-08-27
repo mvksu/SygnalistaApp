@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm"
 import Link from "next/link"
 import { CopyButton } from "@/components/ui/copy-button"
 import { Link as LinkIcon, ExternalLink, QrCode } from "lucide-react"
+import { Button } from "tweakcn/ui/button"
 
 export default async function ReportingChannelsPage() {
 	const { orgId: clerkOrgId } = await auth()
@@ -19,9 +20,15 @@ export default async function ReportingChannelsPage() {
 	return (
     <div className="space-y-6">
       <div className="flex items-center gap-4 border-b">
-        <button className="border-b-2 border-primary px-3 py-2 text-sm font-medium">Links</button>
-        <button className="px-3 py-2 text-sm text-muted-foreground" disabled>Phone hotline</button>
-        <button className="px-3 py-2 text-sm text-muted-foreground" disabled>Email</button>
+        <Button className="border-b-2 border-primary font-medium" variant="link" size="sm">
+          Links
+        </Button>
+        <Button className="text-muted-foreground" variant="link" size="sm" disabled>
+          Phone hotline
+        </Button>
+        <Button className="text-muted-foreground" variant="link" size="sm" disabled>
+          Email
+        </Button>
       </div>
 			<div className="flex items-center justify-between">
 				<h1 className="text-2xl font-semibold">Reporting channels</h1>
