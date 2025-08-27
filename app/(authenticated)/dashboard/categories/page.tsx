@@ -4,6 +4,7 @@ import { reportCategories } from "@/db/schema/reportCategories"
 import { eq } from "drizzle-orm"
 import { addCategory, setCategoryActive } from "@/actions/categories"
 import Link from "next/link"
+import { Button } from "tweakcn/ui/button"
 
 export default async function CategoriesPage() {
 	const { orgId: clerkOrgId } = await auth()
@@ -28,7 +29,9 @@ export default async function CategoriesPage() {
 							</div>
                     <div className="flex justify-end gap-2">
                         <Link href="/dashboard/categories" className="rounded border px-3 py-1 text-sm">Cancel</Link>
-                        <button type="submit" className="rounded bg-primary px-3 py-1 text-sm text-primary-foreground">Save</button>
+                        <Button type="submit" className="px-3 py-1 text-sm" variant="primary" size="sm">
+                            Save
+                        </Button>
                     </div>
 						</form>
 					</div>
@@ -51,7 +54,7 @@ export default async function CategoriesPage() {
 								<td className="p-2">{c.active ? "Active" : "Inactive"}</td>
 								<td className="p-2">
 									<form action={async (formData) => { 'use server'; await setCategoryActive(c.id, !c.active) }}>
-										<button type="submit" className="rounded border px-2 py-1 text-xs">{c.active ? "Deactivate" : "Activate"}</button>
+                                                                                <Button type="submit" className="px-2 py-1 text-xs" variant="outline" size="sm">{c.active ? "Deactivate" : "Activate"}</Button>
 									</form>
 								</td>
 							</tr>

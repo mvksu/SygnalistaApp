@@ -3,6 +3,7 @@
 import Image from "next/image"
 import { useEffect, useMemo, useState } from "react"
 import { useAuth, useOrganization, useUser } from "@clerk/nextjs"
+import { Button } from "tweakcn/ui/button"
 
 type Role = "ADMIN" | "HANDLER" | "AUDITOR"
 
@@ -85,9 +86,9 @@ export function GeneralTab() {
                 <div className="h-16 w-16" />
               )}
             </div>
-            <button className="rounded border px-3 py-1 text-sm" disabled>
+            <Button className="px-3 py-1 text-sm" disabled variant="outline" size="sm">
               Change
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -135,13 +136,15 @@ export function GeneralTab() {
           </select>
         </div>
         <div>
-          <button
-            className="bg-primary text-primary-foreground rounded px-3 py-2 text-sm disabled:opacity-50"
+          <Button
+            className="px-3 py-2 text-sm"
             onClick={onSave}
             disabled={saving}
+            variant="primary"
+            size="sm"
           >
             Save changes
-          </button>
+          </Button>
         </div>
       </div>
 

@@ -1,15 +1,21 @@
 "use client"
 
 import { useState } from "react"
-import { Button } from "@/components/ui/button"
+import { Button } from "tweakcn/ui/button"
 
 function StepHeader({ step, setStep }: { step: number; setStep: (n: number) => void }) {
   return (
     <div className="flex items-center gap-4 border-b pb-2">
       {["Welcome", "Survey", "Thank you"].map((label, i) => (
-        <button key={label} className={`text-sm ${step === i ? "font-semibold" : "text-muted-foreground"}`} onClick={() => setStep(i)}>
+        <Button
+          key={label}
+          className={`text-sm ${step === i ? "font-semibold" : "text-muted-foreground"}`}
+          onClick={() => setStep(i)}
+          variant="link"
+          size="sm"
+        >
           {i + 1}. {label}
-        </button>
+        </Button>
       ))}
     </div>
   )
