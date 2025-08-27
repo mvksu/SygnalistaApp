@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useTransition } from "react"
 import type { SelectReport } from "@/db/schema/reports"
 import { Avatar } from "@/components/ui/avatar"
 import { AvatarFallback } from "@radix-ui/react-avatar"
+import { Button } from "@/components/ui/button"
 
 type ReportStatus =
   | "IN_PROGRESS"
@@ -201,13 +202,15 @@ export default function InfoPanel({
                       ))}
                     </div>
                   </div>
-                  <button
-                    className="inline-flex h-6 w-6 items-center justify-center rounded border text-xs"
+                  <Button
+                    className="h-6 w-6 text-xs"
                     title="Assign member"
                     onClick={() => setShowPicker(true)}
+                    variant="outline"
+                    size="icon"
                   >
                     +
-                  </button>
+                  </Button>
                 </div>
               ) : (
                 <div>{i.value}</div>
@@ -225,12 +228,14 @@ export default function InfoPanel({
           <div className="w-full max-w-md rounded bg-white p-4 shadow-lg">
             <div className="mb-2 flex items-center justify-between">
               <div className="text-base font-semibold">Assign member</div>
-              <button
-                className="text-muted-foreground text-sm"
+              <Button
+                className="text-sm text-muted-foreground"
                 onClick={() => setShowPicker(false)}
+                variant="link"
+                size="sm"
               >
                 Close
-              </button>
+              </Button>
             </div>
             <input
               className="mb-3 w-full rounded border px-2 py-1 text-sm"
@@ -240,10 +245,12 @@ export default function InfoPanel({
             />
             <div className="max-h-64 overflow-auto">
               {filtered.map(m => (
-                <button
+                <Button
                   key={m.orgMemberId}
-                  className="hover:bg-muted/50 flex w-full items-center justify-between rounded px-2 py-2 text-left"
+                  className="flex w-full items-center justify-between px-2 py-2 text-left hover:bg-muted/50"
                   onClick={() => assign(m.orgMemberId)}
+                  variant="ghost"
+                  size="sm"
                 >
                   <div>
                     <div className="text-sm font-medium">
@@ -254,7 +261,7 @@ export default function InfoPanel({
                     </div>
                   </div>
                   <div className="text-xs">Assign</div>
-                </button>
+                </Button>
               ))}
               {filtered.length === 0 && (
                 <div className="text-muted-foreground py-6 text-center text-sm">

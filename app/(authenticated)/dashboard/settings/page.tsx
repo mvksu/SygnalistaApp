@@ -5,6 +5,7 @@ import { organizations } from "@/db/schema/organizations"
 import { eq } from "drizzle-orm"
 import { updateOrgSettings } from "@/src/server/services/settings"
 import { addCategory, setCategoryActive } from "@/actions/categories"
+
 import {
   Select,
   SelectContent,
@@ -17,6 +18,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
+
 
 export default async function SettingsPage() {
   const { orgId: clerkOrgId } = await auth()
@@ -32,6 +34,7 @@ export default async function SettingsPage() {
       <h1 className="text-2xl font-semibold">Settings</h1>
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">Organization</h2>
+
         <form
           action={async (formData: FormData) => {
             "use server"
@@ -131,7 +134,9 @@ export default async function SettingsPage() {
                 <Label className="text-xs text-muted-foreground">Name</Label>
                 <Input name="name" placeholder="Category name" />
               </div>
-              <Button type="submit" size="sm">
+
+              <Button type="submit" className="px-3 py-1 text-sm" variant="primary" size="sm">
+
                 Save
               </Button>
             </form>
@@ -153,7 +158,9 @@ export default async function SettingsPage() {
                   <td className="p-2">{c.active ? "Active" : "Inactive"}</td>
                   <td className="p-2">
                     <form action={async () => { "use server"; await setCategoryActive(c.id, !c.active) }}>
-                      <Button type="submit" variant="outline" size="sm">
+
+                      <Button type="submit" className="px-2 py-1 text-xs" variant="outline" size="sm">
+
                         {c.active ? "Deactivate" : "Activate"}
                       </Button>
                     </form>

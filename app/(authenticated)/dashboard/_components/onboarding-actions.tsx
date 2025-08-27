@@ -67,14 +67,16 @@ export function OnboardingActions({
             <div className="fixed inset-0 z-50 flex items-center justify-center">
               <div className="absolute inset-0 bg-black/60" onClick={() => setShowIntro(false)} />
               <div className="relative z-10 w-[90vw] max-w-3xl rounded-md bg-card p-4 shadow-xl">
-                <button
+                <Button
                   type="button"
                   className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
                   aria-label="Close"
                   onClick={() => setShowIntro(false)}
+                  variant="ghost"
+                  size="icon"
                 >
                   <X className="h-5 w-5" />
-                </button>
+                </Button>
                 <div className="space-y-3">
                   <div className="text-lg font-semibold">Welcome tour</div>
                   <div className="aspect-video w-full overflow-hidden rounded">

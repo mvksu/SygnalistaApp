@@ -4,6 +4,7 @@ import { db } from "@/db"
 import { reportingChannels } from "@/db/schema/reportingChannels"
 import { organizations } from "@/db/schema/organizations"
 import { eq } from "drizzle-orm"
+import { Button } from "@/components/ui/button"
 
 export default async function PosterPage({ params }: { params: { id: string } }) {
   const channel = await db.query.reportingChannels.findFirst({ where: eq(reportingChannels.id, params.id) })
@@ -29,9 +30,9 @@ export default async function PosterPage({ params }: { params: { id: string } })
           >
             Back
           </a>
-          <button className="btn btn-primary">
+          <Button className="btn btn-primary" variant="primary" size="sm">
             <span>Print</span>
-          </button>
+          </Button>
         </div>
         <div className="page bg-card rounded-lg shadow-lg p-8 max-w-3xl mx-auto">
           <div className="flex items-center gap-4 mb-6">

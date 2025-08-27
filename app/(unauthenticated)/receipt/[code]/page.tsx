@@ -2,11 +2,12 @@
 
 import { CheckCircle2, Copy, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { CopyButton } from "@/components/ui/copy-button"
 
-type Props = { params: { code: string } }
+type Props = { params: { code: string; caseKey: string } }
 
 export default function ReceiptView({ params }: Props) {
-  const { code } = params
+  const { code, passphrase } = params
   return (
     <div className="container mx-auto max-w-3xl py-10">
       <div className="mb-4 flex items-center gap-2 text-green-600">
@@ -16,14 +17,16 @@ export default function ReceiptView({ params }: Props) {
 
       <h1 className="mb-2 text-2xl font-semibold">Your Case</h1>
       <p className="text-muted-foreground mb-6 text-sm">
-        Store this code safely. Use it with your case key to access your
-        secure inbox later.
+        Store this code safely. Use it with your case key to access your secure
+        inbox later.
       </p>
 
       <div className="rounded-md border p-4">
-        <div className="text-muted-foreground text-xs uppercase">
-          Case ID
-        </div>
+        <div className="text-muted-foreground text-xs uppercase">Case ID</div>
+        <div className="font-mono text-lg break-all">{code}</div>
+      </div>
+      <div className="rounded-md border p-4 mt-4">
+        <div className="text-muted-foreground text-xs uppercase">Case Key</div>
         <div className="font-mono text-lg break-all">{code}</div>
       </div>
 
@@ -68,9 +71,9 @@ function ReceiptActions({ code }: { code: string }) {
 
   return (
     <div className="flex items-center gap-2">
-      <Button variant="secondary" type="button" onClick={handleCopy}>
+      <CopyButton variant="secondary" type="button" onClick={handleCopy}>
         <Copy className="mr-2 h-4 w-4" /> Copy
-      </Button>
+      </CopyButton>
       <Button type="button" onClick={handleDownload}>
         <Download className="mr-2 h-4 w-4" /> Download
       </Button>

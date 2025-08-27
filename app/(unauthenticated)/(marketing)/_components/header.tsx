@@ -41,10 +41,12 @@ export function Header({ userMembership }: HeaderProps) {
             </Link>
           </div>
           <div className="flex lg:hidden">
-            <button
+            <Button
               type="button"
-              className="text-muted-foreground -m-2.5 inline-flex items-center justify-center rounded-md p-2.5"
+              className="-m-2.5 inline-flex items-center justify-center p-2.5 text-muted-foreground"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              variant="ghost"
+              size="icon"
             >
               <span className="sr-only">Open main menu</span>
               {mobileMenuOpen ? (
@@ -52,7 +54,7 @@ export function Header({ userMembership }: HeaderProps) {
               ) : (
                 <Menu className="h-6 w-6" aria-hidden="true" />
               )}
-            </button>
+            </Button>
           </div>
           <div className="hidden lg:flex lg:gap-x-12">
             {navigation.map(item => (
@@ -124,14 +126,16 @@ export function Header({ userMembership }: HeaderProps) {
               >
                 <span className="text-xl font-bold">Signalista</span>
               </Link>
-              <button
+              <Button
                 type="button"
-                className="text-muted-foreground -m-2.5 rounded-md p-2.5"
+                className="-m-2.5 rounded-md p-2.5 text-muted-foreground"
                 onClick={() => setMobileMenuOpen(false)}
+                variant="ghost"
+                size="icon"
               >
                 <span className="sr-only">Close menu</span>
                 <X className="h-6 w-6" aria-hidden="true" />
-              </button>
+              </Button>
             </div>
             <div className="mt-6 flow-root">
               <div className="divide-border -my-6 divide-y">

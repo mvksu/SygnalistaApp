@@ -1,9 +1,24 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import { Card } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select"
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger
+} from "@/components/ui/sheet"
 
 type Category = { id: string; name: string }
 
@@ -53,64 +68,106 @@ export function CasesControls(props: {
     setCategoryId("")
     setPeriod("all")
     const p = new URLSearchParams(searchParams?.toString())
-    p.delete("status"); p.delete("categoryId"); p.delete("period")
+    p.delete("status")
+    p.delete("categoryId")
+    p.delete("period")
     router.replace(`${pathname}?${p.toString()}`)
     setOpen(false)
   }, [pathname, router, searchParams])
 
   return (
-    <div className="flex flex-wrap items-center gap-2 justify-between">
+    <Card className="flex flex-wrap items-center justify-between gap-2 p-4">
       <div className="flex items-center gap-2">
-        <input
-          className="border rounded px-3 py-2 text-sm"
+        <Input
           placeholder="Search case id..."
           value={q}
           onChange={e => setQ(e.target.value)}
         />
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
-            <Button variant="ghost" className="text-sm underline">Filters</Button>
+            <Button variant="ghost" className="text-sm underline">
+              Filters
+            </Button>
           </SheetTrigger>
           <SheetContent side="right" className="w-[360px] p-4">
             <SheetHeader>
               <SheetTitle>Filters</SheetTitle>
             </SheetHeader>
-            <div className="space-y-4 mt-4">
+            <div className="mt-4 space-y-4">
               <div className="space-y-1">
                 <div className="text-sm font-medium">Status</div>
-                <select className="border rounded px-3 py-2 w-full text-sm" value={status} onChange={e => setStatus(e.target.value)}>
-                  <option value="">Any</option>
-                  {[
-                    "OPEN","ACKNOWLEDGED","IN_PROGRESS","FEEDBACK_GIVEN","CLOSED","RESOLVED","NEW","ACTIVE"
-                  ].map(s => (<option key={s} value={s}>{s}</option>))}
-                </select>
+                <Select value={status} onValueChange={setStatus}>
+                  <SelectTrigger className="w-full text-sm">
+                    <SelectValue placeholder="Any" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Any</SelectItem>
+                    {[
+                      "OPEN",
+                      "ACKNOWLEDGED",
+                      "IN_PROGRESS",
+                      "FEEDBACK_GIVEN",
+                      "CLOSED",
+                      "RESOLVED",
+                      "NEW",
+                      "ACTIVE"
+                    ].map(s => (
+                      <SelectItem key={s} value={s}>
+                        {s}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1">
                 <div className="text-sm font-medium">Category</div>
-                <select className="border rounded px-3 py-2 w-full text-sm" value={categoryId} onChange={e => setCategoryId(e.target.value)}>
-                  <option value="">Any</option>
-                  {props.categories.map(c => (<option key={c.id} value={c.id}>{c.name}</option>))}
-                </select>
+                <Select value={categoryId} onValueChange={setCategoryId}>
+                  <SelectTrigger className="w-full text-sm">
+                    <SelectValue placeholder="Any" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Any</SelectItem>
+                    {props.categories.map(c => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1">
                 <div className="text-sm font-medium">Period</div>
-                <select className="border rounded px-3 py-2 w-full text-sm" value={period} onChange={e => setPeriod(e.target.value)}>
-                  <option value="all">All time</option>
-                  <option value="7d">Last 7 days</option>
-                  <option value="30d">Last 30 days</option>
-                </select>
+                <Select value={period} onValueChange={setPeriod}>
+                  <SelectTrigger className="w-full text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All time</SelectItem>
+                    <SelectItem value="7d">Last 7 days</SelectItem>
+                    <SelectItem value="30d">Last 30 days</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="flex gap-2 pt-2">
-                <Button className="w-full" onClick={applyFilters}>Apply</Button>
-                <Button className="w-full" variant="secondary" onClick={clearFilters}>Clear</Button>
+                <Button
+                  className="w-full"
+                  variant="default"
+                  onClick={applyFilters}
+                >
+                  Apply
+                </Button>
+                <Button
+                  className="w-full"
+                  variant="secondary"
+                  onClick={clearFilters}
+                >
+                  Clear
+                </Button>
               </div>
             </div>
           </SheetContent>
         </Sheet>
       </div>
-
-    </div>
+    </Card>
   )
 }
-
-

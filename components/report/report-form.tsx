@@ -2,13 +2,27 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { z } from "zod"
-import Script from "next/script"
 import { reportIntakeSchema, type ReportIntake } from "@/lib/validation/report"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
-import { Button as UIButton } from "@/components/ui/button"
+
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select"
+import { Checkbox } from "@/components/ui/checkbox"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger
+} from "@/components/ui/popover"
+
 import { getBrowserSupabase } from "@/lib/supabase/client"
+import { Card } from "../ui/card"
 
 async function sha256(file: File): Promise<string> {
   const buf = await file.arrayBuffer()
@@ -28,21 +42,18 @@ type Props = {
 export default function ReportForm({
   categories,
   onSubmit,
-  channelSlug,
+  channelSlug
 }: Props) {
-  type MediaRecorderConstructor = typeof MediaRecorder & {
-    isTypeSupported?: (type: string) => boolean
-  }
-
   const [values, setValues] = useState<ReportIntake>({
     categoryId: "",
     body: "",
     anonymous: true,
     contact: undefined,
-    attachments: [],
+    attachments: []
   })
   const [subject, setSubject] = useState("")
   const [files, setFiles] = useState<File[]>([])
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
 
@@ -62,7 +73,6 @@ export default function ReportForm({
   const [audioLevel, setAudioLevel] = useState(0)
 
   const MAX_SECONDS = 15 * 60 // 15 minutes
-
   const validator = useMemo(() => reportIntakeSchema, [])
 
   function setField<K extends keyof ReportIntake>(
@@ -76,9 +86,8 @@ export default function ReportForm({
     e.preventDefault()
     setSubmitting(true)
     setErrors({})
-    const parsed = validator.safeParse(values)
-  
 
+    const parsed = validator.safeParse(values)
     if (!parsed.success) {
       const fieldErrors: Record<string, string> = {}
       for (const issue of parsed.error.issues) {
@@ -96,9 +105,10 @@ export default function ReportForm({
       if (files.length > 0) {
         const uploaded: typeof attachmentsForSubmit = []
         const supabase = getBrowserSupabase()
+
         for (const f of files) {
           const checksum = await sha256(f)
-          // Request signed upload (public intake uses channel header/query)
+
           const presignRes = await fetch(
             `/api/files/presign?channel=${encodeURIComponent(channelSlug || "")}`,
             {
@@ -119,14 +129,14 @@ export default function ReportForm({
             console.error("presign failed", await presignRes.text())
             throw new Error("Upload presign failed")
           }
-          const { uploadUrl, storageKey, token } = await presignRes.json()
+          const { storageKey, token } = await presignRes.json()
 
-          // Upload using supabase-js helper
           const { error: uploadErr } = await supabase.storage
             .from(process.env.NEXT_PUBLIC_SUPABASE_BUCKET || "uploads")
             .uploadToSignedUrl(storageKey, token, f, {
               contentType: f.type || "application/octet-stream"
             })
+
           if (uploadErr) {
             console.error("upload failed", uploadErr)
             throw new Error("Upload failed")
@@ -142,10 +152,10 @@ export default function ReportForm({
         }
         attachmentsForSubmit = uploaded
       }
+
       if (onSubmit) {
         await onSubmit({ ...parsed.data, attachments: attachmentsForSubmit })
       } else {
-        // TODO: send subject and uploaded files (presigned flow) as needed
         const res = await fetch(
           `/api/reports?channel=${encodeURIComponent(channelSlug || "")}`,
           {
@@ -166,7 +176,9 @@ export default function ReportForm({
           throw new Error("Submission failed")
         }
         const data = await res.json()
-        window.location.href = `/receipt/${encodeURIComponent(data.caseId || data.receiptCode || "")}?caseKey=${encodeURIComponent(data.caseKey || data.passphrase || "")}`
+        window.location.href = `/receipt/${encodeURIComponent(
+          data.caseId || data.receiptCode || ""
+        )}?caseKey=${encodeURIComponent(data.caseKey || data.passphrase || "")}`
       }
     } finally {
       setSubmitting(false)
@@ -203,31 +215,23 @@ export default function ReportForm({
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       audioStreamRef.current = stream
 
-      // Optional: choose best available MIME type
-      const preferredTypes = [
-        "audio/webm;codecs=opus",
-        "audio/webm",
-        "audio/mp4"
-      ]
+      // Pick best mime type
+      const candidates = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"]
       let mimeType: string | undefined
-      for (const t of preferredTypes) {
-        const MR: MediaRecorderConstructor | undefined = (
-          window as unknown as { MediaRecorder?: MediaRecorderConstructor }
-        ).MediaRecorder
+      for (const t of candidates) {
         if (
-          MR &&
-          typeof MR.isTypeSupported === "function" &&
-          MR.isTypeSupported!(t)
+          typeof MediaRecorder !== "undefined" &&
+          "isTypeSupported" in MediaRecorder
         ) {
-          mimeType = t
-          break
+          // @ts-expect-error - TS doesn’t know the static guard here
+          if (MediaRecorder.isTypeSupported?.(t)) {
+            mimeType = t
+            break
+          }
         }
       }
 
-      const mr: MediaRecorder = new MediaRecorder(
-        stream,
-        mimeType ? ({ mimeType } as MediaRecorderOptions) : undefined
-      )
+      const mr = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
       mediaRecorderRef.current = mr
 
       mr.ondataavailable = ev => {
@@ -235,14 +239,16 @@ export default function ReportForm({
           chunksRef.current.push(ev.data)
         }
       }
+
       mr.onstop = async () => {
         const blob = new Blob(chunksRef.current, {
           type: mr.mimeType || "audio/webm"
         })
-        const fileName = `voice-message-${Date.now()}.${blob.type.includes("mp4") ? "m4a" : "webm"}`
+        const fileName = `voice-message-${Date.now()}.${
+          blob.type.includes("mp4") ? "m4a" : "webm"
+        }`
         const file = new File([blob], fileName, { type: blob.type })
 
-        // Expose as selectable file and attachment metadata
         setFiles(prev => {
           const next = [...prev, file]
           setValues(v => ({
@@ -250,7 +256,7 @@ export default function ReportForm({
             attachments: next.map(f => ({
               filename: f.name,
               size: f.size,
-              contentType: f.type
+              contentType: f.type || "application/octet-stream"
             }))
           }))
           return next
@@ -259,7 +265,6 @@ export default function ReportForm({
         const url = URL.createObjectURL(blob)
         setAudioUrl(url)
 
-        // release devices
         if (audioStreamRef.current) {
           audioStreamRef.current.getTracks().forEach(t => t.stop())
           audioStreamRef.current = null
@@ -270,7 +275,7 @@ export default function ReportForm({
         }
       }
 
-      // Simple level meter using WebAudio analyser
+      // Level meter
       const AnyWindow = window as unknown as {
         AudioContext: typeof AudioContext
         webkitAudioContext?: typeof AudioContext
@@ -283,10 +288,9 @@ export default function ReportForm({
       source.connect(analyser)
       analyserRef.current = analyser
       dataArrayRef.current = new Uint8Array(analyser.frequencyBinCount)
-      levelTimerRef.current = window.setInterval((): void => {
+      levelTimerRef.current = window.setInterval(() => {
         if (!analyserRef.current || !dataArrayRef.current) return
         analyserRef.current.getByteTimeDomainData(dataArrayRef.current)
-        // Compute rough RMS level 0..1
         let sum = 0
         for (let i = 0; i < dataArrayRef.current.length; i++) {
           const v = (dataArrayRef.current[i] - 128) / 128
@@ -298,11 +302,9 @@ export default function ReportForm({
 
       mr.start(250)
       setIsRecording(true)
-      timerRef.current = window.setInterval((): void => {
+      timerRef.current = window.setInterval(() => {
         setRecordSeconds(prev => {
-          if (prev + 1 >= MAX_SECONDS) {
-            stopRecording()
-          }
+          if (prev + 1 >= MAX_SECONDS) stopRecording()
           return prev + 1
         })
       }, 1000)
@@ -314,7 +316,7 @@ export default function ReportForm({
     }
   }
 
-  function stopRecording(): void {
+  function stopRecording() {
     try {
       if (
         mediaRecorderRef.current &&
@@ -352,6 +354,7 @@ export default function ReportForm({
           experiencing.
         </p>
       </div>
+
       <div className="space-y-2">
         <label className="text-sm font-medium">Subject</label>
         <Input
@@ -366,27 +369,32 @@ export default function ReportForm({
           Choose how you would like to report
         </label>
         <div className="grid gap-2 md:grid-cols-2">
-          <button
+          <Card
             type="button"
-            className={`rounded border p-3 text-left ${!values.anonymous ? "border-primary" : ""}`}
+            variant="outline"
+            className={`justify-start p-3 text-left flex flex-col h-24 ${!values.anonymous ? "border-primary" : ""}`}
             onClick={() => setField("anonymous", false)}
+            size="sm"
           >
             <div className="font-medium">Report Confidentially</div>
             <div className="text-muted-foreground text-sm">
               Provide optional contact so handlers can reach you.
             </div>
-          </button>
-          <button
+          </Card>
+
+          <Card
             type="button"
-            className={`rounded border p-3 text-left ${values.anonymous ? "border-primary" : ""}`}
+            variant="outline"
+            className={`justify-start p-3 text-left ${values.anonymous ? "border-primary" : ""}`}
             onClick={() => setField("anonymous", true)}
+            size="sm"
           >
             <div className="font-medium">Report Anonymously</div>
             <div className="text-muted-foreground text-sm">
               Do not share identifying information; you will receive a receipt
               and passphrase.
             </div>
-          </button>
+          </Card>
         </div>
       </div>
 
@@ -394,18 +402,21 @@ export default function ReportForm({
         <label className="text-sm font-medium">
           Select categories associated with the case
         </label>
-        <select
-          className="w-full rounded-md border px-2 py-2"
+        <Select
           value={values.categoryId}
-          onChange={e => setField("categoryId", e.target.value)}
+          onValueChange={val => setField("categoryId", val)}
         >
-          <option value="">Select a category</option>
-          {categories.map(c => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger>
+            <SelectValue placeholder="Select a category" />
+          </SelectTrigger>
+          <SelectContent>
+            {categories.map(c => (
+              <SelectItem key={c.id} value={c.id}>
+                {c.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         {errors["categoryId"] && (
           <p className="text-sm text-red-600">{errors["categoryId"]}</p>
         )}
@@ -424,8 +435,91 @@ export default function ReportForm({
         )}
       </div>
 
+      {/* Files */}
       <div className="space-y-2">
         <label className="text-sm font-medium">Files</label>
+
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button type="button" variant="secondary">
+              Add attachments
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-80">
+            <div className="space-y-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                multiple
+                onChange={e => {
+                  const list = e.target.files ? Array.from(e.target.files) : []
+                  setFiles(prev => {
+                    const next = [...prev, ...list]
+                    setValues(v => ({
+                      ...v,
+                      attachments: next.map(f => ({
+                        filename: f.name,
+                        size: f.size,
+                        contentType: f.type || "application/octet-stream"
+                      }))
+                    }))
+                    return next
+                  })
+                }}
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                Choose files
+              </Button>
+              {files.length > 0 && (
+                <ul className="space-y-1 text-sm">
+                  {files.map((f, idx) => (
+                    <li
+                      key={idx}
+                      className="flex items-center justify-between rounded border px-2 py-1"
+                    >
+                      <span className="max-w-[75%] truncate">
+                        {f.name}{" "}
+                        <span className="text-muted-foreground">
+                          ({Math.ceil(f.size / 1024)} KB)
+                        </span>
+                      </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-600 hover:text-red-600"
+                        onClick={() =>
+                          setFiles(prev => {
+                            const next = prev.filter((_, i) => i !== idx)
+                            setValues(v => ({
+                              ...v,
+                              attachments: next.map(f => ({
+                                filename: f.name,
+                                size: f.size,
+                                contentType:
+                                  f.type || "application/octet-stream"
+                              }))
+                            }))
+                            return next
+                          })
+                        }
+                      >
+                        Remove
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
+
+        {/* Inline chooser (optional duplicate entrypoint, not duplicate list markup) */}
         <div className="flex items-center gap-2">
           <input
             id="file-input"
@@ -441,26 +535,28 @@ export default function ReportForm({
                   attachments: next.map(f => ({
                     filename: f.name,
                     size: f.size,
-                    contentType: f.type
+                    contentType: f.type || "application/octet-stream"
                   }))
                 }))
                 return next
               })
             }}
           />
-          <UIButton
+          <Button
             type="button"
             variant="secondary"
+            size="sm"
             onClick={() => document.getElementById("file-input")?.click()}
           >
             Choose files
-          </UIButton>
+          </Button>
           {files.length > 0 && (
             <span className="text-muted-foreground text-sm">
               {files.length} file(s) selected
             </span>
           )}
         </div>
+
         {files.length > 0 && (
           <ul className="space-y-1 text-sm">
             {files.map((f, idx) => (
@@ -474,9 +570,11 @@ export default function ReportForm({
                     ({Math.ceil(f.size / 1024)} KB)
                   </span>
                 </span>
-                <button
+                <Button
                   type="button"
                   className="text-xs text-red-600"
+                  variant="link"
+                  size="sm"
                   onClick={() =>
                     setFiles(prev => {
                       const next = prev.filter((_, i) => i !== idx)
@@ -485,7 +583,7 @@ export default function ReportForm({
                         attachments: next.map(f => ({
                           filename: f.name,
                           size: f.size,
-                          contentType: f.type
+                          contentType: f.type || "application/octet-stream"
                         }))
                       }))
                       return next
@@ -493,88 +591,98 @@ export default function ReportForm({
                   }
                 >
                   Remove
-                </button>
+                </Button>
               </li>
             ))}
           </ul>
         )}
+
         <p className="text-muted-foreground text-xs">
           Attach any relevant documents or images. (Optional)
         </p>
       </div>
 
-      {/* Voice message */}
+      {/* Voice message (single, de-duplicated UI) */}
       <div className="space-y-2">
-        <div className="rounded-lg border p-4">
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="text-sm font-medium">Voice message</div>
-              <div className="text-muted-foreground text-xs">
-                Record up to 15 minutes and attach it to your report.
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button type="button" variant="secondary">
+              Voice message
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-80">
+            <div className="space-y-2">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="text-sm font-medium">Voice message</div>
+                  <div className="text-muted-foreground text-xs">
+                    Record up to 15 minutes and attach it to your report.
+                  </div>
+                </div>
+                {audioUrl && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-600 hover:text-red-600"
+                    onClick={removeVoiceAttachment}
+                  >
+                    Remove
+                  </Button>
+                )}
               </div>
-            </div>
-            {audioUrl && (
-              <button
-                type="button"
-                className="text-xs text-red-600"
-                onClick={removeVoiceAttachment}
-              >
-                Remove
-              </button>
-            )}
-          </div>
 
-          <div className="mt-4 flex items-center gap-4">
-            <div className="bg-muted h-3 w-32 overflow-hidden rounded">
-              <div
-                className="bg-primary h-full transition-[width]"
-                style={{
-                  width: `${Math.min(100, Math.round(audioLevel * 100))}%`
-                }}
-              />
-            </div>
-            <div className="text-muted-foreground text-xs">
-              {Math.floor(recordSeconds / 60)}:
-              {String(recordSeconds % 60).padStart(2, "0")}
-            </div>
-            {!isRecording ? (
-              <UIButton
-                type="button"
-                onClick={startRecording}
-                variant="default"
-              >
-                Start recording
-              </UIButton>
-            ) : (
-              <UIButton
-                type="button"
-                onClick={stopRecording}
-                variant="destructive"
-              >
-                Stop
-              </UIButton>
-            )}
-          </div>
+              <div className="flex items-center gap-4">
+                <div className="bg-muted h-3 w-32 overflow-hidden rounded">
+                  <div
+                    className="bg-primary h-full transition-[width]"
+                    style={{
+                      width: `${Math.min(100, Math.round(audioLevel * 100))}%`
+                    }}
+                  />
+                </div>
+                <div className="text-muted-foreground text-xs">
+                  {Math.floor(recordSeconds / 60)}:
+                  {String(recordSeconds % 60).padStart(2, "0")}
+                </div>
 
-          {recordError && (
-            <p className="mt-2 text-xs text-red-600">{recordError}</p>
-          )}
-          {audioUrl && (
-            <div className="mt-4">
-              <audio controls src={audioUrl} className="w-full" />
+                {!isRecording ? (
+                  <Button type="button" onClick={startRecording} size="sm">
+                    Start
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    onClick={stopRecording}
+                    variant="destructive"
+                    size="sm"
+                  >
+                    Stop
+                  </Button>
+                )}
+              </div>
+
+              {recordError && (
+                <p className="text-xs text-red-600">{recordError}</p>
+              )}
+              {audioUrl && <audio controls src={audioUrl} className="w-full" />}
             </div>
-          )}
-        </div>
+          </PopoverContent>
+        </Popover>
       </div>
 
       <div className="flex items-center gap-2">
-        <input
+        <Checkbox
           id="anonymous"
-          type="checkbox"
           checked={values.anonymous}
-          onChange={e => setField("anonymous", e.target.checked)}
+          onCheckedChange={checked => setField("anonymous", checked === true)}
         />
-        <label htmlFor="anonymous">Submit anonymously</label>
+        <label
+          htmlFor="anonymous"
+          className="text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+        >
+          Submit anonymously
+        </label>
       </div>
 
       {!values.anonymous && (
@@ -586,7 +694,7 @@ export default function ReportForm({
               value={values.contact?.email || ""}
               onChange={e =>
                 setField("contact", {
-                  ...values.contact,
+                  ...(values.contact ?? {}),
                   email: e.target.value
                 })
               }
@@ -599,7 +707,7 @@ export default function ReportForm({
               value={values.contact?.phone || ""}
               onChange={e =>
                 setField("contact", {
-                  ...values.contact,
+                  ...(values.contact ?? {}),
                   phone: e.target.value
                 })
               }
@@ -609,7 +717,7 @@ export default function ReportForm({
         </div>
       )}
 
-      <Button type="submit" disabled={submitting}>
+      <Button type="submit" disabled={submitting} variant="default" size="sm">
         {submitting ? "Submitting..." : "Submit report"}
       </Button>
 

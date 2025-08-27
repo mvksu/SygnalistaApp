@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import ReportForm from "@/components/report/report-form"
+import { Button } from "@/components/ui/button"
 
 type Props = {
   orgName: string
@@ -60,9 +61,9 @@ export default function ReportLandingClient({ orgName, channelSlug, categories, 
           </section>
 
           <div className="flex items-center gap-2">
-            <button onClick={() => setStarted(true)} className="inline-flex rounded bg-primary px-4 py-2 text-primary-foreground">
+            <Button onClick={() => setStarted(true)} className="px-4 py-2" variant="primary" size="sm">
               Create New Report
-            </button>
+            </Button>
             <a
               href={`/reporting-channel/${encodeURIComponent(channelSlug)}/checkcase`}
               onClick={(e) => {
