@@ -27,7 +27,7 @@ export default clerkMiddleware(async (auth, req) => {
     "X-Content-Type-Options": "nosniff",
   })
 
-  return NextResponse.next({ headers })
+  return NextResponse.next()
 })
 
 export const config = {

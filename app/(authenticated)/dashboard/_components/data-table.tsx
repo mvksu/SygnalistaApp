@@ -87,6 +87,7 @@ import {
   SheetTitle,
   SheetTrigger
 } from "@/components/ui/sheet"
+import { DatePickerWithRange } from "../cases/data-picker-with-range"
 
 export const schema = z.object({
   id: z.string(),
@@ -480,10 +481,7 @@ export function DataTable({
                 })}
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button variant="outline" size="sm">
-            <PlusIcon />
-            <span className="hidden lg:inline">Add Section</span>
-          </Button>
+          <DatePickerWithRange />
         </div>
       </div>
       <TabsContent

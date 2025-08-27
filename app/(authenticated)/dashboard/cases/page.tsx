@@ -6,6 +6,7 @@ import { reportCategories } from "@/db/schema/reportCategories"
 import { CasesControls } from "./cases-controls"
 import { eq } from "drizzle-orm"
 import { DataTable } from "../_components/data-table"
+import { DatePickerWithRange } from "./data-picker-with-range"
 
 export default async function CasesPage({
   searchParams
