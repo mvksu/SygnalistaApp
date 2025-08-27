@@ -1,5 +1,6 @@
 import { auth } from "@clerk/nextjs/server"
 import { listRegister } from "@/src/server/services/register"
+import { Button } from "tweakcn/ui/button"
 
 export default async function RegisterPage({ searchParams }: { searchParams: { status?: string; categoryId?: string; q?: string } }) {
   const { orgId: clerkOrgId } = await auth()
@@ -20,8 +21,8 @@ export default async function RegisterPage({ searchParams }: { searchParams: { s
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <input className="border rounded px-3 py-2 text-sm" placeholder="Search case id..." defaultValue={searchParams?.q || ""} name="q" />
-          <button className="text-sm underline">Filters</button>
-          <button className="text-sm underline">Advanced search</button>
+          <Button className="underline" variant="link" size="sm">Filters</Button>
+          <Button className="underline" variant="link" size="sm">Advanced search</Button>
         </div>
         <div className="flex items-center gap-2">
           <select className="border rounded px-3 py-2 text-sm" defaultValue={searchParams?.status || "all"}>
@@ -38,7 +39,9 @@ export default async function RegisterPage({ searchParams }: { searchParams: { s
       <div className="overflow-x-auto border rounded-md">
         <div className="flex justify-end p-2">
           <form action="/api/register/export" method="post">
-            <button className="border rounded px-3 py-2 text-sm" type="submit">Export CSV</button>
+            <Button className="border px-3 py-2 text-sm" type="submit" variant="outline" size="sm">
+              Export CSV
+            </Button>
           </form>
         </div>
         <table className="w-full text-sm">

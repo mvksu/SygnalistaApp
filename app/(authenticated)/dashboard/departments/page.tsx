@@ -4,6 +4,7 @@ import { ROLES } from "@/lib/authz"
 import { departments } from "@/db/schema/departments"
 import { eq } from "drizzle-orm"
 import { auth } from "@clerk/nextjs/server"
+import { Button } from "tweakcn/ui/button"
 
 export default async function DepartmentsPage() {
   const { orgId: clerkOrgId } = await auth()
@@ -27,9 +28,9 @@ export default async function DepartmentsPage() {
             className="rounded border px-3 py-2 text-sm"
             placeholder="New department name"
           />
-          <button className="bg-primary text-primary-foreground rounded px-3 py-2 text-sm">
+          <Button className="px-3 py-2 text-sm" variant="primary" size="sm">
             Add
-          </button>
+          </Button>
         </form>
         <div className="overflow-hidden rounded border">
           <table className="w-full text-sm">

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { Button } from "tweakcn/ui/button"
 
 type Plan = "free" | "pro" | "enterprise"
 
@@ -78,9 +79,13 @@ export default function PlanSelector({ currentPlan }: { currentPlan: Plan }) {
                 </ul>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <button className={`w-full rounded ${highlight ? "bg-primary text-primary-foreground" : "border"} px-3 py-2 text-sm`}>
+                    <Button
+                      className={`w-full ${highlight ? "bg-primary text-primary-foreground" : ""} px-3 py-2 text-sm`}
+                      variant={highlight ? "primary" : "outline"}
+                      size="sm"
+                    >
                       {p.cta}
-                    </button>
+                    </Button>
                   </TooltipTrigger>
                   <TooltipContent>{p.key === "enterprise" ? "Contact us for a tailored plan" : "Proceed to checkout"}</TooltipContent>
                 </Tooltip>

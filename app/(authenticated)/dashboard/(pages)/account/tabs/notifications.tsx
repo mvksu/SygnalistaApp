@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { Button } from "tweakcn/ui/button"
 
 type Prefs = {
   emailCaseUpdates: boolean
@@ -55,7 +56,9 @@ export function NotificationsTab() {
         </label>
       </div>
       <div>
-        <button className="rounded bg-primary px-3 py-2 text-sm text-primary-foreground disabled:opacity-50" onClick={onSave} disabled={saving}>Save preferences</button>
+        <Button className="px-3 py-2 text-sm" onClick={onSave} disabled={saving} variant="primary" size="sm">
+          Save preferences
+        </Button>
       </div>
     </div>
   )

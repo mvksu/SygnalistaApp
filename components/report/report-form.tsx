@@ -4,10 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { z } from "zod"
 import Script from "next/script"
 import { reportIntakeSchema, type ReportIntake } from "@/lib/validation/report"
-import { Button } from "@/components/ui/button"
+import { Button } from "tweakcn/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
-import { Button as UIButton } from "@/components/ui/button"
 import { getBrowserSupabase } from "@/lib/supabase/client"
 
 async function sha256(file: File): Promise<string> {
@@ -366,27 +365,31 @@ export default function ReportForm({
           Choose how you would like to report
         </label>
         <div className="grid gap-2 md:grid-cols-2">
-          <button
+          <Button
             type="button"
             className={`rounded border p-3 text-left ${!values.anonymous ? "border-primary" : ""}`}
             onClick={() => setField("anonymous", false)}
+            variant="outline"
+            size="sm"
           >
             <div className="font-medium">Report Confidentially</div>
             <div className="text-muted-foreground text-sm">
               Provide optional contact so handlers can reach you.
             </div>
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             className={`rounded border p-3 text-left ${values.anonymous ? "border-primary" : ""}`}
             onClick={() => setField("anonymous", true)}
+            variant="outline"
+            size="sm"
           >
             <div className="font-medium">Report Anonymously</div>
             <div className="text-muted-foreground text-sm">
               Do not share identifying information; you will receive a receipt
               and passphrase.
             </div>
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -448,13 +451,14 @@ export default function ReportForm({
               })
             }}
           />
-          <UIButton
+          <Button
             type="button"
             variant="secondary"
+            size="sm"
             onClick={() => document.getElementById("file-input")?.click()}
           >
             Choose files
-          </UIButton>
+          </Button>
           {files.length > 0 && (
             <span className="text-muted-foreground text-sm">
               {files.length} file(s) selected
@@ -474,9 +478,11 @@ export default function ReportForm({
                     ({Math.ceil(f.size / 1024)} KB)
                   </span>
                 </span>
-                <button
+                <Button
                   type="button"
                   className="text-xs text-red-600"
+                  variant="link"
+                  size="sm"
                   onClick={() =>
                     setFiles(prev => {
                       const next = prev.filter((_, i) => i !== idx)
@@ -493,7 +499,7 @@ export default function ReportForm({
                   }
                 >
                   Remove
-                </button>
+                </Button>
               </li>
             ))}
           </ul>
@@ -514,13 +520,15 @@ export default function ReportForm({
               </div>
             </div>
             {audioUrl && (
-              <button
+              <Button
                 type="button"
                 className="text-xs text-red-600"
                 onClick={removeVoiceAttachment}
+                variant="link"
+                size="sm"
               >
                 Remove
-              </button>
+              </Button>
             )}
           </div>
 
@@ -538,21 +546,23 @@ export default function ReportForm({
               {String(recordSeconds % 60).padStart(2, "0")}
             </div>
             {!isRecording ? (
-              <UIButton
+              <Button
                 type="button"
                 onClick={startRecording}
                 variant="default"
+                size="sm"
               >
                 Start recording
-              </UIButton>
+              </Button>
             ) : (
-              <UIButton
+              <Button
                 type="button"
                 onClick={stopRecording}
                 variant="destructive"
+                size="sm"
               >
                 Stop
-              </UIButton>
+              </Button>
             )}
           </div>
 
@@ -609,7 +619,7 @@ export default function ReportForm({
         </div>
       )}
 
-      <Button type="submit" disabled={submitting}>
+      <Button type="submit" disabled={submitting} variant="primary" size="sm">
         {submitting ? "Submitting..." : "Submit report"}
       </Button>
 

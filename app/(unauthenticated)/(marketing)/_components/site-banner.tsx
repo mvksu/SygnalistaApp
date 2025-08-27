@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "framer-motion"
 import { ArrowRight, X } from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
+import { Button } from "tweakcn/ui/button"
 
 export function SiteBanner() {
   const [isVisible, setIsVisible] = useState(true)
@@ -33,13 +34,15 @@ export function SiteBanner() {
                   <ArrowRight className="ml-1 h-3.5 w-3.5" />
                 </Link>
               </div>
-              <button
+              <Button
                 onClick={handleDismiss}
                 className="absolute right-0 rounded p-1 transition-colors hover:bg-white/10"
                 aria-label="Dismiss banner"
+                variant="ghost"
+                size="icon"
               >
                 <X className="h-4 w-4" />
-              </button>
+              </Button>
             </div>
           </div>
         </motion.div>
