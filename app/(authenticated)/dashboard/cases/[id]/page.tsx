@@ -9,6 +9,12 @@ import { auth } from "@clerk/nextjs/server"
 import { organizations } from "@/db/schema/organizations"
 import InfoPanel from "./info-panel"
 import { OptionsPanel } from "./options-panel"
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle
+} from "@/components/ui/card"
 
 export default async function CaseViewPage({
   params
@@ -74,29 +80,25 @@ export default async function CaseViewPage({
       <OptionsPanel />
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
-          <div className="rounded border p-4">
-            <div className="mb-2 text-base font-semibold">Case detail</div>
-            <div className="grid gap-3 text-sm">
+          <Card>
+            <CardHeader className="p-4">
+              <CardTitle className="text-base">Case detail</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-3 p-4 pt-0 text-sm">
               <div>
-                <div className="text-muted-foreground text-xs uppercase">
-                  Sender
-                </div>
+                <div className="text-xs uppercase text-muted-foreground">Sender</div>
                 <div>{senderLabel}</div>
               </div>
               <div>
-                <div className="text-muted-foreground text-xs uppercase">
-                  Category
-                </div>
+                <div className="text-xs uppercase text-muted-foreground">Category</div>
                 <div>{cat?.name || "—"}</div>
               </div>
               <div>
-                <div className="text-muted-foreground text-xs uppercase">
-                  Case ID
-                </div>
+                <div className="text-xs uppercase text-muted-foreground">Case ID</div>
                 <div className="font-mono">{report.caseId}</div>
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
           <CaseTabs reportId={String(report.id)} initialThread={items} initialLogs={logs} />
         </div>

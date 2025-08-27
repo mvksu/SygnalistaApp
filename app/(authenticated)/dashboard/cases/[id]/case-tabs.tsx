@@ -1,9 +1,10 @@
 "use client"
 
-import { useState } from "react"
 import dynamic from "next/dynamic"
 import { CaseLogs } from "./case-logs"
 import { ReportLog } from "@/db/schema/reportLogs"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { Card, CardContent } from "@/components/ui/card"
 
 type ThreadItem = {
   id: string
@@ -28,40 +29,29 @@ export default function CaseTabs({
   initialThread: ThreadItem[]
   initialLogs: ReportLog[]
 }) {
-  const [tab, setTab] = useState<"messages" | "logs" | "internal">("messages")
   return (
-    <div className="rounded border">
-      <div className="flex items-center gap-4 border-b px-4 pt-2">
-        <button
-          className={`px-3 py-2 text-sm font-medium ${tab === "messages" ? "border-primary border-b-2" : "text-muted-foreground"}`}
-          onClick={() => setTab("messages")}
-        >
-          Messages
-        </button>
-        <button
-          className={`px-3 py-2 text-sm ${tab === "logs" ? "border-primary border-b-2 font-medium" : "text-muted-foreground"}`}
-          onClick={() => setTab("logs")}
-        >
-          Logs
-        </button>
-        <button
-          className={`px-3 py-2 text-sm ${tab === "internal" ? "border-primary border-b-2 font-medium" : "text-muted-foreground"}`}
-          onClick={() => setTab("internal")}
-        >
-          Internal notes
-        </button>
-      </div>
-      <div className="p-4">
-        {tab === "messages" && (
-          <CaseThreadClient reportId={reportId} initialThread={initialThread} />
-        )}
-        {tab === "logs" && <CaseLogs logs={initialLogs} />}
-        {tab === "internal" && (
-          <div className="text-muted-foreground text-sm">
-            Internal notes coming soon.
-          </div>
-        )}
-      </div>
-    </div>
+    <Card>
+      <Tabs defaultValue="messages">
+        <TabsList className="grid w-full grid-cols-3 border-b bg-transparent">
+          <TabsTrigger value="messages">Messages</TabsTrigger>
+          <TabsTrigger value="logs">Logs</TabsTrigger>
+          <TabsTrigger value="internal">Internal notes</TabsTrigger>
+        </TabsList>
+        <CardContent className="p-4">
+          <TabsContent value="messages">
+            <CaseThreadClient reportId={reportId} initialThread={initialThread} />
+          </TabsContent>
+          <TabsContent value="logs">
+            <CaseLogs logs={initialLogs} />
+          </TabsContent>
+          <TabsContent value="internal">
+            <div className="text-sm text-muted-foreground">
+              Internal notes coming soon.
+            </div>
+          </TabsContent>
+        </CardContent>
+      </Tabs>
+    </Card>
   )
 }
+
