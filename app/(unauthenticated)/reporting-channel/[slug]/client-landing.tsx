@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import ReportForm from "@/components/report/report-form"
-import { Button } from "tweakcn/ui/button"
+import { Button } from "@/components/ui/button"
 
 type Props = {
   orgName: string

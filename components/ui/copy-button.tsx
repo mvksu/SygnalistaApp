@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Check, Copy as CopyIcon } from "lucide-react"
-import { Button } from "tweakcn/ui/button"
+import { Button } from "@/components/ui/button"
 
 export function CopyButton({ text, className, iconOnly }: { text: string; className?: string; iconOnly?: boolean }) {
 	const [copied, setCopied] = useState(false)
@@ -28,8 +28,9 @@ export function CopyButton({ text, className, iconOnly }: { text: string; classN
                         {iconOnly ? (
                                 copied ? <Check className="h-4 w-4" /> : <CopyIcon className="h-4 w-4" />
                         ) : (
-                                copied ? "Copied" : "Copy"
+                                copied ? "Copied" : <><CopyIcon className="h-4 w-4" /> Copy</>
                         )}
+                        
                 </Button>
         )
 }

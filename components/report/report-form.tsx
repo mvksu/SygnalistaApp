@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { z } from "zod"
 import { reportIntakeSchema, type ReportIntake } from "@/lib/validation/report"
-import { Button } from "tweakcn/ui/button"
+import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 
@@ -12,16 +12,17 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
+  SelectValue
 } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
   Popover,
   PopoverContent,
-  PopoverTrigger,
+  PopoverTrigger
 } from "@/components/ui/popover"
 
 import { getBrowserSupabase } from "@/lib/supabase/client"
+import { Card } from "../ui/card"
 
 async function sha256(file: File): Promise<string> {
   const buf = await file.arrayBuffer()
@@ -41,18 +42,14 @@ type Props = {
 export default function ReportForm({
   categories,
   onSubmit,
-  channelSlug,
+  channelSlug
 }: Props) {
-  type MediaRecorderConstructor = typeof MediaRecorder & {
-    isTypeSupported?: (type: string) => boolean
-  }
-
   const [values, setValues] = useState<ReportIntake>({
     categoryId: "",
     body: "",
     anonymous: true,
     contact: undefined,
-    attachments: [],
+    attachments: []
   })
   const [subject, setSubject] = useState("")
   const [files, setFiles] = useState<File[]>([])
@@ -76,7 +73,6 @@ export default function ReportForm({
   const [audioLevel, setAudioLevel] = useState(0)
 
   const MAX_SECONDS = 15 * 60 // 15 minutes
-
   const validator = useMemo(() => reportIntakeSchema, [])
 
   function setField<K extends keyof ReportIntake>(
@@ -90,9 +86,8 @@ export default function ReportForm({
     e.preventDefault()
     setSubmitting(true)
     setErrors({})
-    const parsed = validator.safeParse(values)
-  
 
+    const parsed = validator.safeParse(values)
     if (!parsed.success) {
       const fieldErrors: Record<string, string> = {}
       for (const issue of parsed.error.issues) {
@@ -110,9 +105,10 @@ export default function ReportForm({
       if (files.length > 0) {
         const uploaded: typeof attachmentsForSubmit = []
         const supabase = getBrowserSupabase()
+
         for (const f of files) {
           const checksum = await sha256(f)
-          // Request signed upload (public intake uses channel header/query)
+
           const presignRes = await fetch(
             `/api/files/presign?channel=${encodeURIComponent(channelSlug || "")}`,
             {
@@ -133,14 +129,14 @@ export default function ReportForm({
             console.error("presign failed", await presignRes.text())
             throw new Error("Upload presign failed")
           }
-          const { uploadUrl, storageKey, token } = await presignRes.json()
+          const { storageKey, token } = await presignRes.json()
 
-          // Upload using supabase-js helper
           const { error: uploadErr } = await supabase.storage
             .from(process.env.NEXT_PUBLIC_SUPABASE_BUCKET || "uploads")
             .uploadToSignedUrl(storageKey, token, f, {
               contentType: f.type || "application/octet-stream"
             })
+
           if (uploadErr) {
             console.error("upload failed", uploadErr)
             throw new Error("Upload failed")
@@ -156,10 +152,10 @@ export default function ReportForm({
         }
         attachmentsForSubmit = uploaded
       }
+
       if (onSubmit) {
         await onSubmit({ ...parsed.data, attachments: attachmentsForSubmit })
       } else {
-        // TODO: send subject and uploaded files (presigned flow) as needed
         const res = await fetch(
           `/api/reports?channel=${encodeURIComponent(channelSlug || "")}`,
           {
@@ -180,7 +176,9 @@ export default function ReportForm({
           throw new Error("Submission failed")
         }
         const data = await res.json()
-        window.location.href = `/receipt/${encodeURIComponent(data.caseId || data.receiptCode || "")}?caseKey=${encodeURIComponent(data.caseKey || data.passphrase || "")}`
+        window.location.href = `/receipt/${encodeURIComponent(
+          data.caseId || data.receiptCode || ""
+        )}?caseKey=${encodeURIComponent(data.caseKey || data.passphrase || "")}`
       }
     } finally {
       setSubmitting(false)
@@ -217,31 +215,23 @@ export default function ReportForm({
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       audioStreamRef.current = stream
 
-      // Optional: choose best available MIME type
-      const preferredTypes = [
-        "audio/webm;codecs=opus",
-        "audio/webm",
-        "audio/mp4"
-      ]
+      // Pick best mime type
+      const candidates = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"]
       let mimeType: string | undefined
-      for (const t of preferredTypes) {
-        const MR: MediaRecorderConstructor | undefined = (
-          window as unknown as { MediaRecorder?: MediaRecorderConstructor }
-        ).MediaRecorder
+      for (const t of candidates) {
         if (
-          MR &&
-          typeof MR.isTypeSupported === "function" &&
-          MR.isTypeSupported!(t)
+          typeof MediaRecorder !== "undefined" &&
+          "isTypeSupported" in MediaRecorder
         ) {
-          mimeType = t
-          break
+          // @ts-expect-error - TS doesn’t know the static guard here
+          if (MediaRecorder.isTypeSupported?.(t)) {
+            mimeType = t
+            break
+          }
         }
       }
 
-      const mr: MediaRecorder = new MediaRecorder(
-        stream,
-        mimeType ? ({ mimeType } as MediaRecorderOptions) : undefined
-      )
+      const mr = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
       mediaRecorderRef.current = mr
 
       mr.ondataavailable = ev => {
@@ -249,14 +239,16 @@ export default function ReportForm({
           chunksRef.current.push(ev.data)
         }
       }
+
       mr.onstop = async () => {
         const blob = new Blob(chunksRef.current, {
           type: mr.mimeType || "audio/webm"
         })
-        const fileName = `voice-message-${Date.now()}.${blob.type.includes("mp4") ? "m4a" : "webm"}`
+        const fileName = `voice-message-${Date.now()}.${
+          blob.type.includes("mp4") ? "m4a" : "webm"
+        }`
         const file = new File([blob], fileName, { type: blob.type })
 
-        // Expose as selectable file and attachment metadata
         setFiles(prev => {
           const next = [...prev, file]
           setValues(v => ({
@@ -264,7 +256,7 @@ export default function ReportForm({
             attachments: next.map(f => ({
               filename: f.name,
               size: f.size,
-              contentType: f.type
+              contentType: f.type || "application/octet-stream"
             }))
           }))
           return next
@@ -273,7 +265,6 @@ export default function ReportForm({
         const url = URL.createObjectURL(blob)
         setAudioUrl(url)
 
-        // release devices
         if (audioStreamRef.current) {
           audioStreamRef.current.getTracks().forEach(t => t.stop())
           audioStreamRef.current = null
@@ -284,7 +275,7 @@ export default function ReportForm({
         }
       }
 
-      // Simple level meter using WebAudio analyser
+      // Level meter
       const AnyWindow = window as unknown as {
         AudioContext: typeof AudioContext
         webkitAudioContext?: typeof AudioContext
@@ -297,10 +288,9 @@ export default function ReportForm({
       source.connect(analyser)
       analyserRef.current = analyser
       dataArrayRef.current = new Uint8Array(analyser.frequencyBinCount)
-      levelTimerRef.current = window.setInterval((): void => {
+      levelTimerRef.current = window.setInterval(() => {
         if (!analyserRef.current || !dataArrayRef.current) return
         analyserRef.current.getByteTimeDomainData(dataArrayRef.current)
-        // Compute rough RMS level 0..1
         let sum = 0
         for (let i = 0; i < dataArrayRef.current.length; i++) {
           const v = (dataArrayRef.current[i] - 128) / 128
@@ -312,11 +302,9 @@ export default function ReportForm({
 
       mr.start(250)
       setIsRecording(true)
-      timerRef.current = window.setInterval((): void => {
+      timerRef.current = window.setInterval(() => {
         setRecordSeconds(prev => {
-          if (prev + 1 >= MAX_SECONDS) {
-            stopRecording()
-          }
+          if (prev + 1 >= MAX_SECONDS) stopRecording()
           return prev + 1
         })
       }, 1000)
@@ -328,7 +316,7 @@ export default function ReportForm({
     }
   }
 
-  function stopRecording(): void {
+  function stopRecording() {
     try {
       if (
         mediaRecorderRef.current &&
@@ -366,6 +354,7 @@ export default function ReportForm({
           experiencing.
         </p>
       </div>
+
       <div className="space-y-2">
         <label className="text-sm font-medium">Subject</label>
         <Input
@@ -380,29 +369,24 @@ export default function ReportForm({
           Choose how you would like to report
         </label>
         <div className="grid gap-2 md:grid-cols-2">
-          <Button
+          <Card
             type="button"
             variant="outline"
-            className={`p-3 text-left justify-start ${
-              !values.anonymous ? "border-primary" : ""
-            }`}
+            className={`justify-start p-3 text-left flex flex-col h-24 ${!values.anonymous ? "border-primary" : ""}`}
             onClick={() => setField("anonymous", false)}
-            variant="outline"
             size="sm"
           >
             <div className="font-medium">Report Confidentially</div>
             <div className="text-muted-foreground text-sm">
               Provide optional contact so handlers can reach you.
             </div>
-          </Button>
-          <Button
+          </Card>
+
+          <Card
             type="button"
             variant="outline"
-            className={`p-3 text-left justify-start ${
-              values.anonymous ? "border-primary" : ""
-            }`}
+            className={`justify-start p-3 text-left ${values.anonymous ? "border-primary" : ""}`}
             onClick={() => setField("anonymous", true)}
-            variant="outline"
             size="sm"
           >
             <div className="font-medium">Report Anonymously</div>
@@ -410,7 +394,7 @@ export default function ReportForm({
               Do not share identifying information; you will receive a receipt
               and passphrase.
             </div>
-          </Button>
+          </Card>
         </div>
       </div>
 
@@ -451,6 +435,7 @@ export default function ReportForm({
         )}
       </div>
 
+      {/* Files */}
       <div className="space-y-2">
         <label className="text-sm font-medium">Files</label>
 
@@ -476,8 +461,8 @@ export default function ReportForm({
                       attachments: next.map(f => ({
                         filename: f.name,
                         size: f.size,
-                        contentType: f.type,
-                      })),
+                        contentType: f.type || "application/octet-stream"
+                      }))
                     }))
                     return next
                   })
@@ -516,8 +501,9 @@ export default function ReportForm({
                               attachments: next.map(f => ({
                                 filename: f.name,
                                 size: f.size,
-                                contentType: f.type,
-                              })),
+                                contentType:
+                                  f.type || "application/octet-stream"
+                              }))
                             }))
                             return next
                           })
@@ -532,6 +518,8 @@ export default function ReportForm({
             </div>
           </PopoverContent>
         </Popover>
+
+        {/* Inline chooser (optional duplicate entrypoint, not duplicate list markup) */}
         <div className="flex items-center gap-2">
           <input
             id="file-input"
@@ -547,7 +535,7 @@ export default function ReportForm({
                   attachments: next.map(f => ({
                     filename: f.name,
                     size: f.size,
-                    contentType: f.type
+                    contentType: f.type || "application/octet-stream"
                   }))
                 }))
                 return next
@@ -568,6 +556,7 @@ export default function ReportForm({
             </span>
           )}
         </div>
+
         {files.length > 0 && (
           <ul className="space-y-1 text-sm">
             {files.map((f, idx) => (
@@ -594,7 +583,7 @@ export default function ReportForm({
                         attachments: next.map(f => ({
                           filename: f.name,
                           size: f.size,
-                          contentType: f.type
+                          contentType: f.type || "application/octet-stream"
                         }))
                       }))
                       return next
@@ -607,12 +596,13 @@ export default function ReportForm({
             ))}
           </ul>
         )}
+
         <p className="text-muted-foreground text-xs">
           Attach any relevant documents or images. (Optional)
         </p>
       </div>
 
-      {/* Voice message */}
+      {/* Voice message (single, de-duplicated UI) */}
       <div className="space-y-2">
         <Popover>
           <PopoverTrigger asChild>
@@ -641,12 +631,13 @@ export default function ReportForm({
                   </Button>
                 )}
               </div>
+
               <div className="flex items-center gap-4">
                 <div className="bg-muted h-3 w-32 overflow-hidden rounded">
                   <div
                     className="bg-primary h-full transition-[width]"
                     style={{
-                      width: `${Math.min(100, Math.round(audioLevel * 100))}%`,
+                      width: `${Math.min(100, Math.round(audioLevel * 100))}%`
                     }}
                   />
                 </div>
@@ -654,101 +645,41 @@ export default function ReportForm({
                   {Math.floor(recordSeconds / 60)}:
                   {String(recordSeconds % 60).padStart(2, "0")}
                 </div>
+
                 {!isRecording ? (
-                  <Button type="button" onClick={startRecording}>
-                    Start recording
+                  <Button type="button" onClick={startRecording} size="sm">
+                    Start
                   </Button>
                 ) : (
                   <Button
                     type="button"
                     onClick={stopRecording}
                     variant="destructive"
+                    size="sm"
                   >
                     Stop
                   </Button>
                 )}
               </div>
+
               {recordError && (
                 <p className="text-xs text-red-600">{recordError}</p>
               )}
-              {audioUrl && (
-                <audio controls src={audioUrl} className="w-full" />
-              )}
+              {audioUrl && <audio controls src={audioUrl} className="w-full" />}
             </div>
-
           </PopoverContent>
         </Popover>
-=======
-            {audioUrl && (
-              <Button
-                type="button"
-                className="text-xs text-red-600"
-                onClick={removeVoiceAttachment}
-                variant="link"
-                size="sm"
-              >
-                Remove
-              </Button>
-            )}
-          </div>
-
-          <div className="mt-4 flex items-center gap-4">
-            <div className="bg-muted h-3 w-32 overflow-hidden rounded">
-              <div
-                className="bg-primary h-full transition-[width]"
-                style={{
-                  width: `${Math.min(100, Math.round(audioLevel * 100))}%`
-                }}
-              />
-            </div>
-            <div className="text-muted-foreground text-xs">
-              {Math.floor(recordSeconds / 60)}:
-              {String(recordSeconds % 60).padStart(2, "0")}
-            </div>
-            {!isRecording ? (
-              <Button
-                type="button"
-                onClick={startRecording}
-                variant="default"
-                size="sm"
-              >
-                Start recording
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                onClick={stopRecording}
-                variant="destructive"
-                size="sm"
-              >
-                Stop
-              </Button>
-            )}
-          </div>
-
-          {recordError && (
-            <p className="mt-2 text-xs text-red-600">{recordError}</p>
-          )}
-          {audioUrl && (
-            <div className="mt-4">
-              <audio controls src={audioUrl} className="w-full" />
-            </div>
-          )}
-        </div>
-
       </div>
 
       <div className="flex items-center gap-2">
         <Checkbox
           id="anonymous"
           checked={values.anonymous}
-          onCheckedChange={checked =>
-            setField("anonymous", checked === true)
-          }
+          onCheckedChange={checked => setField("anonymous", checked === true)}
         />
         <label
           htmlFor="anonymous"
-          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+          className="text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
         >
           Submit anonymously
         </label>
@@ -763,7 +694,7 @@ export default function ReportForm({
               value={values.contact?.email || ""}
               onChange={e =>
                 setField("contact", {
-                  ...values.contact,
+                  ...(values.contact ?? {}),
                   email: e.target.value
                 })
               }
@@ -776,7 +707,7 @@ export default function ReportForm({
               value={values.contact?.phone || ""}
               onChange={e =>
                 setField("contact", {
-                  ...values.contact,
+                  ...(values.contact ?? {}),
                   phone: e.target.value
                 })
               }
@@ -786,7 +717,7 @@ export default function ReportForm({
         </div>
       )}
 
-      <Button type="submit" disabled={submitting} variant="primary" size="sm">
+      <Button type="submit" disabled={submitting} variant="default" size="sm">
         {submitting ? "Submitting..." : "Submit report"}
       </Button>
 
