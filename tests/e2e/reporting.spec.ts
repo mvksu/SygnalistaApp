@@ -57,4 +57,71 @@ test('Submit report → receive receipt → unlock inbox → send follow-up', as
   await expect(page.getByText('Automated follow-up from E2E test')).toBeVisible({ timeout: 10_000 })
 })
 
+test('Report confidentially with contact info → receive receipt → unlock inbox', async ({ page }) => {
+  const channelSlug = process.env.PLAYWRIGHT_CHANNEL_SLUG
+  if (!channelSlug) {
+    test.skip(true, 'Set PLAYWRIGHT_CHANNEL_SLUG to run this e2e flow against a public channel')
+  }
+  await page.goto(`/reporting-channel/${encodeURIComponent(channelSlug!)}`)
+
+  // Choose confidential reporting mode and verify contact fields appear
+  await page.getByRole('button', { name: /Report Confidentially/i }).click()
+  await expect(page.getByPlaceholder('you@example.com')).toBeVisible()
+
+  // Subject
+  const subject = `Automated Test ${Date.now()}`
+  const subjectInput = page.locator('input[placeholder="Short summary of your report"]')
+  if (await subjectInput.count()) {
+    await subjectInput.fill(subject)
+  }
+
+  // Select first category option
+  const categorySelect = page.locator('select')
+  await categorySelect.selectOption({ index: 1 })
+
+  // Description
+  await page
+    .locator('textarea[placeholder="Describe the issue..."]')
+    .fill('Confidential E2E test message that exceeds 20 characters.')
+
+  // Provide contact information
+  await page.getByPlaceholder('you@example.com').fill('reporter@example.com')
+  await page.getByPlaceholder('+48 123 456 789').fill('+48 123 456 789')
+
+  // Submit
+  await page.getByRole('button', { name: /Submit report/i }).click()
+
+  // Expect redirect to receipt page and extract code/key
+  await page.waitForURL(/\/case\//, { timeout: 10_000 })
+  const caseUrl = page.url()
+  const match = /\/case\/([^?]+)\?caseKey=([^&]+)/.exec(caseUrl)
+  expect(match).toBeTruthy()
+  const code = decodeURIComponent(match![1])
+  const caseKey = decodeURIComponent(match![2])
+
+  // Navigate to inbox and unlock
+  await page.goto(`/r/${encodeURIComponent(code)}`)
+  await page.getByLabel('Case key').fill(caseKey)
+  await page.getByRole('button', { name: /Unlock/i }).click()
+
+  // Expect inbox to load
+  await expect(page.getByText('Write a reply...')).toBeVisible({ timeout: 10_000 })
+})
+
+test('Invalid case credentials display an error', async ({ page }) => {
+  const channelSlug = process.env.PLAYWRIGHT_CHANNEL_SLUG
+  if (!channelSlug) {
+    test.skip(true, 'Set PLAYWRIGHT_CHANNEL_SLUG to run this e2e flow against a public channel')
+  }
+  await page.goto(`/reporting-channel/${encodeURIComponent(channelSlug!)}/checkcase`)
+
+  await page.getByLabel('Case ID').fill('WRONG-ID')
+  await page.getByLabel('Case key').fill('bad-key')
+  await page.getByRole('button', { name: /Open/i }).click()
+
+  await expect(
+    page.getByRole('alert').filter({ hasText: 'Invalid Case ID or Case key. Please try again.' })
+  ).toBeVisible()
+})
+
 
