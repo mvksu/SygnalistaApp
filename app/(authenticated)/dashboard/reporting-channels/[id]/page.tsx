@@ -6,9 +6,10 @@ import { eq } from "drizzle-orm"
 import Link from "next/link"
 import { setChannelDefaultLanguage, deleteReportingChannelAction } from "@/actions/reporting-channels"
 import { CopyButton } from "@/components/ui/copy-button"
-import { Link as LinkIcon, ExternalLink, Copy as CopyIcon, Image as ImageIcon } from "lucide-react"
+import { Link as LinkIcon, ExternalLink, Image as ImageIcon } from "lucide-react"
 import { clerkClient } from "@clerk/nextjs/server"
 import { Button } from "tweakcn/ui/button"
+import PosterDialog from "@/components/poster-dialog"
 
 export default async function ReportingChannelDetail({ params }: { params: Promise<{ id: string }> }) {
 	const { orgId: clerkOrgId } = await auth()
@@ -25,6 +26,11 @@ export default async function ReportingChannelDetail({ params }: { params: Promi
     organizationId: clerkOrgId
   })
   const orgImgUrl = orgImg.imageUrl
+
+  const base = process.env.NEXT_PUBLIC_BASE_URL || ""
+  const link = `${base}/secure/${channel.slug}`
+  const QR = await import("qrcode")
+  const qrDataUrl = await QR.toDataURL(link, { margin: 2, width: 600 })
 
 
 	return (
@@ -65,10 +71,7 @@ export default async function ReportingChannelDetail({ params }: { params: Promi
                         </div>
                     <div className="flex items-center justify-between text-sm">
                         <div className="text-muted-foreground">Poster promotion</div>
-                        <Link href={`/dashboard/reporting-channels/${channel.id}/poster`} className="inline-flex items-center gap-1 rounded border px-2 py-1">
-                            <ExternalLink className="h-4 w-4" />
-                            <span>Open poster</span>
-                        </Link>
+                        <PosterDialog orgName={org?.name ?? ""} orgLogoUrl={org?.logoUrl} link={link} qrDataUrl={qrDataUrl} />
                     </div>
                 </div>
 				<div className="space-y-6">
