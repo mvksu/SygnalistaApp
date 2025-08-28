@@ -4,7 +4,7 @@ import { db } from "@/db"
 import { reportingChannels } from "@/db/schema/reportingChannels"
 import { getDbOrgIdForClerkOrg } from "@/src/server/orgs"
 import { eq, and } from "drizzle-orm"
-import { writeAudit, getAuditFingerprint } from "@/src/server/services/audit"
+import { writeAudit, getAuditFingerprint, getCurrentActorOrgMemberId } from "@/src/server/services/audit"
 
 export async function GET() {
   const { orgId: clerkOrgId } = await auth()
@@ -15,9 +15,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const { orgId: clerkOrgId } = await auth()
-  if (!clerkOrgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  const orgId = await getDbOrgIdForClerkOrg(clerkOrgId)
+  const { orgMemberId, orgId } = await getCurrentActorOrgMemberId()
+  if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const body = await req.json().catch(() => null)
   const name = String(body?.name || "").trim()
   const slug = String(body?.slug || "").trim()
@@ -26,10 +25,10 @@ export async function POST(req: NextRequest) {
   if (!name || !slug) return NextResponse.json({ error: "name and slug required" }, { status: 400 })
   const [row] = await db
     .insert(reportingChannels)
-    .values({ orgId, name, slug, type, defaultLanguage })
+    .values({ orgId, name, slug, type, defaultLanguage, createdByOrgMemberId: orgMemberId || null })
     .returning()
   const { ipHash, uaHash } = await getAuditFingerprint(req)
-  await writeAudit({ orgId, actorId: null, action: "CHANNEL_CREATED", targetType: "channel", targetId: row.id, ipHash, uaHash })
+  await writeAudit({ orgId, actorId: orgMemberId, action: "CHANNEL_CREATED", targetType: "channel", targetId: row.id, ipHash, uaHash })
   return NextResponse.json(row)
 }
 

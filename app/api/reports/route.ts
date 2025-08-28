@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/db"
 import { reports } from "@/db/schema/reports"
-import { orgMembers, orgRole } from "@/db/schema/orgMembers"
-import { users } from "@/db/schema/users"
 import { reportMessages } from "@/db/schema/reportMessages"
 import { attachments } from "@/db/schema/attachments"
-import { eq, and } from "drizzle-orm"
+import { eq } from "drizzle-orm"
 import { reportIntakeSchema } from "@/lib/validation/report"
 import { isAllowedMimeType, getFileSizeLimit } from "@/lib/validation/upload"
 import { generateCaseId, generateCaseKey, hashCaseKey } from "@/lib/ids"
@@ -13,6 +11,7 @@ import { encryptField } from "@/lib/crypto/encryption"
 import { auth } from "@clerk/nextjs/server"
 import { reportingChannels } from "@/db/schema/reportingChannels"
 import { organizations } from "@/db/schema/organizations"
+import { assignDefaultAssignee } from "@/src/server/services/reports"
 
 // Compute feedback due (3 months) and initial SLA windows server-side
 function addMonths(date: Date, months: number): Date {
@@ -29,10 +28,12 @@ export async function POST(request: NextRequest) {
     const channelSlug = request.headers.get("x-channel-slug") || url.searchParams.get("channel") || undefined
 
     let orgId: string | null = null
+    let channelId: string | null = null
     if (channelSlug) {
       const channel = await db.query.reportingChannels.findFirst({ where: eq(reportingChannels.slug, channelSlug) })
       if (channel) {
         orgId = channel.orgId
+        channelId = channel.id
       } else {
         return NextResponse.json({ error: "Invalid channel" }, { status: 400 })
       }
@@ -67,10 +68,6 @@ export async function POST(request: NextRequest) {
     const reporterMode = anonymous ? "ANON" : "IDENTIFIED"
     const contactPayload = contact ? JSON.stringify(contact) : ""
     const contactEncrypted = contact ? encryptField(orgId!, contactPayload) : null
-
-    // Resolve default assignee (first ADMIN in org)
-    const adminMember = await db.query.orgMembers.findFirst({ where: and(eq(orgMembers.orgId, orgId!), eq(orgMembers.role, "ADMIN" as any)) })
-    const defaultAssignee = adminMember ? adminMember.userId : null
 
     // Insert report
     const [inserted] = await db
@@ -161,6 +158,13 @@ export async function POST(request: NextRequest) {
         await db.insert(attachments).values(rowsToInsert as any)
       }
     }
+
+    await assignDefaultAssignee({
+      reportId: inserted.id,
+      orgId: orgId!,
+      categoryId,
+      channelId
+    })
 
     return NextResponse.json({
       id: inserted.id,

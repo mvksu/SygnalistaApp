@@ -1,13 +1,16 @@
 import { db } from "@/db"
 import { reports, SelectReport } from "@/db/schema/reports"
 import { reportMessages } from "@/db/schema/reportMessages"
-import { eq } from "drizzle-orm"
+import { and, eq } from "drizzle-orm"
 import { encryptField } from "@/lib/crypto/encryption"
 import { writeAudit } from "@/src/server/services/audit"
 import { sendAcknowledgeEmail, sendFeedbackEmail } from "@/src/server/notify/mailer"
 import { organizations } from "@/db/schema/organizations"
 import { logReport } from "./reportLogs"
 import { reportAssignees } from "@/db/schema/reportAssignees"
+import { routingRules } from "@/db/schema/routingRules"
+import { orgMembers } from "@/db/schema/orgMembers"
+import { reportingChannels } from "@/db/schema/reportingChannels"
 
 
 export async function acknowledgeReport(options: { orgId: string; reportId: string; actorId?: string | null }) {
@@ -76,6 +79,50 @@ export async function unassignReport({ reportId, orgMemberId, actorId }: { repor
   await db.delete(reportAssignees)
     .where(and(eq(reportAssignees.reportId, reportId), eq(reportAssignees.orgMemberId, orgMemberId)))
   await logReport(reportId, "assignment_removed", `Unassigned org_member_id=${orgMemberId}`, actorId)
+}
+
+export async function assignDefaultAssignee({
+  reportId,
+  orgId,
+  categoryId,
+  channelId
+}: {
+  reportId: string
+  orgId: string
+  categoryId?: string | null
+  channelId?: string | null
+}) {
+  const rules = await db
+    .select()
+    .from(routingRules)
+    .where(eq(routingRules.orgId, orgId))
+
+  rules.sort(
+    (a, b) =>
+      (b.categoryId ? 1 : 0) + (b.channelId ? 1 : 0) - ((a.categoryId ? 1 : 0) + (a.channelId ? 1 : 0))
+  )
+
+  const matched = rules.find(
+    r =>
+      (!r.categoryId || r.categoryId === categoryId) &&
+      (!r.channelId || r.channelId === channelId)
+  )
+
+  let orgMemberId = matched?.orgMemberId || null
+  if (!orgMemberId && channelId) {
+    const channel = await db.query.reportingChannels.findFirst({ where: eq(reportingChannels.id, channelId) })
+    orgMemberId = channel?.createdByOrgMemberId || null
+  }
+  if (!orgMemberId) {
+    const adminMember = await db.query.orgMembers.findFirst({
+      where: and(eq(orgMembers.orgId, orgId), eq(orgMembers.role, "ADMIN" as any))
+    })
+    orgMemberId = adminMember?.id || null
+  }
+
+  if (orgMemberId) {
+    await assignReport({ reportId, orgMemberId })
+  }
 }
 
 

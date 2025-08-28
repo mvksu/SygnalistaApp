@@ -2,7 +2,11 @@ import { describe, it, expect, vi } from "vitest"
 import { NextRequest } from "next/server"
 import { GET as getPrefs, PATCH as savePrefs } from "@/app/api/account/notifications/route"
 
-vi.mock("@clerk/nextjs/server", () => ({ auth: vi.fn().mockResolvedValue({ userId: "user-1" }), currentUser: vi.fn().mockResolvedValue({ id: "user-1", publicMetadata: {} }) }))
+vi.mock("@clerk/nextjs/server", () => ({
+  auth: vi.fn().mockResolvedValue({ userId: "user-1" }),
+  currentUser: vi.fn().mockResolvedValue({ id: "user-1", publicMetadata: {} }),
+  clerkClient: { users: { updateUser: vi.fn().mockResolvedValue({}) } }
+}))
 vi.mock("@/app/api/account/notifications/route", async (orig) => {
   const mod = await orig()
   return { ...mod }

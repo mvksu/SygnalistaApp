@@ -1,5 +1,6 @@
 import { pgTable, uuid, text, timestamp, pgEnum, uniqueIndex } from "drizzle-orm/pg-core"
 import { organizations } from "./organizations"
+import { orgMembers } from "./orgMembers"
 
 export const reportingChannelType = pgEnum("reporting_channel_type", [
 	"links",
@@ -16,6 +17,8 @@ export const reportingChannels = pgTable(
         slug: text("slug").notNull().unique(),
         type: reportingChannelType("type").default("links").notNull(),
         defaultLanguage: text("default_language").default("auto").notNull(),
+        createdByOrgMemberId: uuid("created_by_org_member_id")
+          .references(() => orgMembers.id, { onDelete: "set null" }),
         createdAt: timestamp("created_at").defaultNow().notNull(),
         updatedAt: timestamp("updated_at").defaultNow().notNull(),
     },
