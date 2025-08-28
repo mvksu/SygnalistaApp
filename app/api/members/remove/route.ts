@@ -4,6 +4,7 @@ import { db } from "@/db"
 import { users } from "@/db/schema/users"
 import { orgMembers } from "@/db/schema/orgMembers"
 import { and, eq } from "drizzle-orm"
+import { writeAudit, getAuditFingerprint } from "@/src/server/services/audit"
 
 async function getDbOrgId() {
   const { orgId: clerkOrgId } = await auth()
@@ -50,6 +51,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const { ipHash, uaHash } = await getAuditFingerprint(req)
+    await writeAudit({ orgId: dbOrgId, actorId: null, action: "MEMBER_REMOVED", targetType: "member", targetId: user.id, ipHash, uaHash })
     return NextResponse.json({ ok: true })
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || "Failed" }, { status: 500 })

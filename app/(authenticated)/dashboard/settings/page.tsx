@@ -3,8 +3,8 @@ import { db } from "@/db"
 import { reportCategories } from "@/db/schema/reportCategories"
 import { organizations } from "@/db/schema/organizations"
 import { eq } from "drizzle-orm"
-import { updateOrgSettings } from "@/src/server/services/settings"
-import { addCategory, setCategoryActive } from "@/actions/categories"
+import { updateOrgSettings, addCategory, setCategoryActive } from "@/src/server/services/settings"
+import { getAuditFingerprint } from "@/src/server/services/audit"
 import { Button } from "tweakcn/ui/button"
 
 export default async function SettingsPage() {
@@ -23,13 +23,23 @@ export default async function SettingsPage() {
         <h2 className="text-lg font-semibold">Organization</h2>
         <form action={async (formData: FormData) => {
           "use server"
+          const req = (global as any).request as Request | undefined
+          let ipHash: string | null = null
+          let uaHash: string | null = null
+          try {
+            if (req) {
+              const fp = await getAuditFingerprint(req)
+              ipHash = fp.ipHash
+              uaHash = fp.uaHash
+            }
+          } catch {}
           const name = String(formData.get("name") || "").trim()
           const locale = String(formData.get("locale") || "pl-PL")
           const retention = Number(formData.get("retentionDays") || 365)
           const anonymousAllowed = !!formData.get("anonymousAllowed")
           const ackDays = Number(formData.get("ackDays") || 7)
           const feedbackMonths = Number(formData.get("feedbackMonths") || 3)
-          await updateOrgSettings(orgId, { name, locale, retentionDays: retention, anonymousAllowed, ackDays, feedbackMonths })
+          await updateOrgSettings(orgId, { name, locale, retentionDays: retention, anonymousAllowed, ackDays, feedbackMonths, actorId: null, ipHash, uaHash })
         }} className="rounded border p-4 grid gap-3 text-sm">
           <div className="grid gap-1">
             <label className="text-muted-foreground">Name</label>
@@ -81,7 +91,22 @@ export default async function SettingsPage() {
         <details className="rounded border p-4">
           <summary className="cursor-pointer text-sm font-medium">Add category</summary>
           <div className="mt-3">
-            <form action={addCategory} className="flex gap-2 items-end">
+            <form action={async (formData: FormData) => {
+              "use server"
+              const req = (global as any).request as Request | undefined
+              let ipHash: string | null = null
+              let uaHash: string | null = null
+              try {
+                if (req) {
+                  const fp = await getAuditFingerprint(req)
+                  ipHash = fp.ipHash
+                  uaHash = fp.uaHash
+                }
+              } catch {}
+              const name = String(formData.get("name") || "").trim()
+              if (!name) return
+              await addCategory(orgId, name, null, ipHash, uaHash)
+            }} className="flex gap-2 items-end">
               <div className="grid gap-1">
                 <label className="text-xs text-muted-foreground">Name</label>
                 <input name="name" className="rounded border px-2 py-1" placeholder="Category name" />
@@ -107,7 +132,18 @@ export default async function SettingsPage() {
                   <td className="p-2">{c.name}</td>
                   <td className="p-2">{c.active ? "Active" : "Inactive"}</td>
                   <td className="p-2">
-                    <form action={async () => { "use server"; await setCategoryActive(c.id, !c.active) }}>
+                    <form action={async () => { "use server"; 
+                      const req = (global as any).request as Request | undefined
+                      let ipHash: string | null = null
+                      let uaHash: string | null = null
+                      try {
+                        if (req) {
+                          const fp = await getAuditFingerprint(req)
+                          ipHash = fp.ipHash
+                          uaHash = fp.uaHash
+                        }
+                      } catch {}
+                      await setCategoryActive(orgId, c.id, !c.active, null, ipHash, uaHash) }}>
                       <Button type="submit" className="px-2 py-1 text-xs" variant="outline" size="sm">
                         {c.active ? "Deactivate" : "Activate"}
                       </Button>

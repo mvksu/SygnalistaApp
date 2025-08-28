@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server"
 import { db } from "@/db"
 import { departments } from "@/db/schema/departments"
 import { eq } from "drizzle-orm"
+import { writeAudit, getAuditFingerprint } from "@/src/server/services/audit"
 
 export async function GET() {
   const { orgId: clerkOrgId } = await auth()
@@ -32,6 +33,8 @@ export async function POST(req: NextRequest) {
   }
   if (!name) return NextResponse.json({ error: "name required" }, { status: 400 })
   const [row] = await db.insert(departments).values({ orgId, name, description: description || null }).returning()
+  const { ipHash, uaHash } = await getAuditFingerprint(req)
+  await writeAudit({ orgId, actorId: null, action: "DEPARTMENT_CREATED", targetType: "department", targetId: row.id, ipHash, uaHash })
   return NextResponse.json(row)
 }
 

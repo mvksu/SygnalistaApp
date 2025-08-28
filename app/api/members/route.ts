@@ -4,6 +4,7 @@ import { db } from "@/db"
 import { users } from "@/db/schema/users"
 import { orgMembers } from "@/db/schema/orgMembers"
 import { and, eq } from "drizzle-orm"
+import { writeAudit, getAuditFingerprint } from "@/src/server/services/audit"
 
 async function getDbOrgId() {
   const { orgId: clerkOrgId } = await auth()
@@ -243,6 +244,8 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    const { ipHash, uaHash } = await getAuditFingerprint(req)
+    await writeAudit({ orgId, actorId: null, action: "MEMBER_UPSERTED", targetType: "member", targetId: dbUser.id, ipHash, uaHash })
     return NextResponse.json({ ok: true })
   } catch (e: unknown) {
     console.error("[members.POST] unexpected error", e)

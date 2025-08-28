@@ -23,6 +23,7 @@ import { ChartPieDonut } from "./_components/chart-pie-donut"
 import { ChartBarMixed } from "./_components/chart-bar-mixed"
 import { SectionCards } from "./_components/section-cards"
 import { ChartAreaInteractive } from "./_components/chart-area-interactive"
+import { Card } from "@/components/ui/card"
 
 
 async function getOrCreateUserId() {
@@ -180,7 +181,7 @@ export default async function Page() {
             },
             idx: number
           ) => (
-            <div className="rounded-md border p-6 text-center" key={idx}>
+            <Card className="p-6 text-center" key={idx}>
               <div className="bg-muted mx-auto mb-3 inline-flex h-10 w-10 items-center justify-center rounded-full">
                 {React.createElement(cfg.icon)}
               </div>
@@ -194,14 +195,14 @@ export default async function Page() {
                 href={cfg.href}
                 keyName={cfg.key}
               />
-            </div>
+            </Card>
           )
         )}
       </div>
       <div className="flex flex-col gap-4">
         <SectionCards />
       </div>
-      <div className="px-4 lg:px-6">
+      <div className="">
         <ChartAreaInteractive />
       </div>
 
