@@ -3,7 +3,8 @@ import { reports } from "@/db/schema/reports"
 import { reportMessages } from "@/db/schema/reportMessages"
 import { reportCategories } from "@/db/schema/reportCategories"
 import { reportLogs } from "@/db/schema/reportLogs"
-import { eq, asc } from "drizzle-orm"
+import { reportViews } from "@/db/schema/reportViews"
+import { eq, asc, desc } from "drizzle-orm"
 import { orgMembers } from "@/db/schema/orgMembers"
 import { users } from "@/db/schema/users"
 import { decryptField } from "@/lib/crypto/encryption"
@@ -90,6 +91,14 @@ export default async function CaseViewPage({
       .where(eq(organizations.id, report.orgId))
   )[0].name
 
+  const [lastView] = await db
+    .select({ viewedAt: reportViews.viewedAt })
+    .from(reportViews)
+    .where(eq(reportViews.reportId, report.id))
+    .orderBy(desc(reportViews.viewedAt))
+    .limit(1)
+  const lastReporterView = lastView?.viewedAt ?? null
+
 
   return (
     <div>
@@ -126,7 +135,11 @@ export default async function CaseViewPage({
               <CardTitle className="text-base">Information</CardTitle>
             </CardHeader>
             <CardContent className="p-4 pt-0">
-              <InfoPanel report={report} orgName={orgName} />
+              <InfoPanel
+                report={report}
+                orgName={orgName}
+                lastViewedByReporter={lastReporterView}
+              />
             </CardContent>
           </Card>
 
