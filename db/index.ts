@@ -16,6 +16,7 @@ import { auditLog } from "./schema/audit"
 import { exportsTable } from "./schema/exports"
 import { surveys, surveyOptions, surveyQuestions } from "./schema/surveys"
 import { onboardingSteps } from "./schema/userOnboarding"
+import { departments } from "./schema/departments"
 
 config({ path: ".env.local" })
 
@@ -42,6 +43,7 @@ const dbSchema = {
   surveyQuestions,
   surveyOptions
   ,onboardingSteps
+  ,departments
 }
 
 function initializeDb(url: string) {

@@ -4,6 +4,8 @@ import { reportMessages } from "@/db/schema/reportMessages"
 import { reportCategories } from "@/db/schema/reportCategories"
 import { reportLogs } from "@/db/schema/reportLogs"
 import { eq, asc } from "drizzle-orm"
+import { orgMembers } from "@/db/schema/orgMembers"
+import { users } from "@/db/schema/users"
 import { decryptField } from "@/lib/crypto/encryption"
 import { auth } from "@clerk/nextjs/server"
 import { organizations } from "@/db/schema/organizations"
@@ -53,13 +55,27 @@ export default async function CaseViewPage({
     createdAt: (m.createdAt as Date).toISOString()
   }))
   const CaseTabs = (await import("./case-tabs")).default
+  const InternalNotes = (await import("./internal-notes")).default
   const SlaPanel = (await import("./sla-panel")).default
 
   const logs = await db
-    .select()
+    .select({
+      id: reportLogs.id,
+      reportId: reportLogs.reportId,
+      orgMemberId: reportLogs.orgMemberId,
+      type: reportLogs.type,
+      message: reportLogs.message,
+      createdAt: reportLogs.createdAt,
+      userName: users.name
+    })
     .from(reportLogs)
+    .leftJoin(orgMembers, eq(orgMembers.id, reportLogs.orgMemberId))
+    .leftJoin(users, eq(users.id, orgMembers.userId))
     .where(eq(reportLogs.reportId, report.id))
     .orderBy(asc(reportLogs.createdAt))
+
+  const internalNotes = logs.filter(l => l.type === "internal_comment")
+  const activityLogs = logs.filter(l => l.type !== "internal_comment")
 
   const [cat] = await db
     .select({ name: reportCategories.name })
@@ -100,12 +116,20 @@ export default async function CaseViewPage({
             </CardContent>
           </Card>
 
-          <CaseTabs reportId={String(report.id)} initialThread={items} initialLogs={logs} />
+          <CaseTabs reportId={String(report.id)} initialThread={items} initialLogs={activityLogs} />
         </div>
 
         <div className="space-y-4">
           <InfoPanel report={report} orgName={orgName} />
           <SlaPanel reportId={String(report.id)} />
+          <Card>
+            <CardHeader className="p-4">
+              <CardTitle className="text-base">Internal comments</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 pt-0">
+              <InternalNotes reportId={String(report.id)} initialNotes={internalNotes as any} />
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

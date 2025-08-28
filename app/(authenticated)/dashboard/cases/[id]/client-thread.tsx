@@ -4,7 +4,6 @@ import { useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { Dialog, DialogTrigger, DialogContent } from "tweakcn/ui/dialog"
 import { Card } from "tweakcn/ui/card"
 import { Checkbox } from "tweakcn/ui/checkbox"
 
@@ -103,13 +102,8 @@ export default function CaseThreadClient({ reportId, initialThread }: Props) {
   }
 
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm">Open conversation</Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px]">
-        <div className="space-y-6">
-          <div className="flex gap-2">
+    <div className="space-y-4">
+      <div className="flex gap-2">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button variant="outline" size="sm" onClick={acknowledge} disabled={actionLoading !== null}>
@@ -126,60 +120,58 @@ export default function CaseThreadClient({ reportId, initialThread }: Props) {
               </TooltipTrigger>
               <TooltipContent>Mark follow-up communication as sent</TooltipContent>
             </Tooltip>
-          </div>
+      </div>
 
-          <div className="space-y-3">
-            {thread.map((m) => (
-              <Card key={m.id} className="p-3">
-                <div className="mb-1 text-xs text-muted-foreground">
-                  {m.sender} • {new Date(m.createdAt).toLocaleString()}
-                </div>
-                <div className="whitespace-pre-wrap flex items-start gap-2">
-                  <span className="mt-1 inline-block" aria-hidden>📎</span>
-                  <span>{m.body}</span>
-                </div>
-              </Card>
-            ))}
-          </div>
+      <div className="space-y-3">
+        {thread.map((m) => (
+          <Card key={m.id} className="p-3">
+            <div className="mb-1 text-xs text-muted-foreground">
+              {m.sender} • {new Date(m.createdAt).toLocaleString()}
+            </div>
+            <div className="whitespace-pre-wrap flex items-start gap-2">
+              <span className="mt-1 inline-block" aria-hidden>💬</span>
+              <span>{m.body}</span>
+            </div>
+          </Card>
+        ))}
+      </div>
 
-          <div className="space-y-2">
-            <Textarea
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="Add a message..."
-              rows={3}
+      <div className="space-y-2">
+        <Textarea
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          placeholder="Write a message to the sender"
+          rows={3}
+        />
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              className="block text-sm"
+              onChange={e => setFiles(Array.from(e.target.files || []))}
             />
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  multiple
-                  className="block text-sm"
-                  onChange={e => setFiles(Array.from(e.target.files || []))}
-                />
-              </TooltipTrigger>
-              <TooltipContent>Attach files (PDF, images, docs)</TooltipContent>
-            </Tooltip>
-            <div className="flex gap-2">
-              <Button size="sm" onClick={sendMessage} disabled={submitting}>
-                {submitting ? "Sending..." : "Send"}
-              </Button>
-            </div>
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="anonymousSend"
-                checked={anonymousSend}
-                onCheckedChange={(checked) => setAnonymousSend(!!checked)}
-              />
-              <label htmlFor="anonymousSend" className="text-sm text-muted-foreground">
-                Do not display my name to the sender
-              </label>
-            </div>
-          </div>
+          </TooltipTrigger>
+          <TooltipContent>Attach files (PDF, images, docs)</TooltipContent>
+        </Tooltip>
+        <div className="flex gap-2">
+          <Button size="sm" onClick={sendMessage} disabled={submitting}>
+            {submitting ? "Sending..." : "Send"}
+          </Button>
         </div>
-      </DialogContent>
-    </Dialog>
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="anonymousSend"
+            checked={anonymousSend}
+            onCheckedChange={(checked) => setAnonymousSend(!!checked)}
+          />
+          <label htmlFor="anonymousSend" className="text-sm text-muted-foreground">
+            Do not display my name to the sender
+          </label>
+        </div>
+      </div>
+    </div>
   )
 }
 

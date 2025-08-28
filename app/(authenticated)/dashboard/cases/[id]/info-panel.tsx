@@ -5,6 +5,7 @@ import type { SelectReport } from "@/db/schema/reports"
 import { Avatar } from "@/components/ui/avatar"
 import { AvatarFallback } from "@radix-ui/react-avatar"
 import { Button } from "@/components/ui/button"
+import { UserPlus } from "lucide-react"
 
 type ReportStatus =
   | "IN_PROGRESS"
@@ -209,7 +210,7 @@ export default function InfoPanel({
                     variant="outline"
                     size="icon"
                   >
-                    +
+                    <UserPlus className="h-4 w-4" />
                   </Button>
                 </div>
               ) : (
