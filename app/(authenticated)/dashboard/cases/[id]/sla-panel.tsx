@@ -47,8 +47,7 @@ export default function SlaPanel({ reportId }: { reportId: string }) {
   if (!data) return null
 
   return (
-    <div className="rounded border p-4">
-      <div className="mb-2 text-base font-semibold">SLA</div>
+    <div>
       <div className="grid gap-3 text-sm">
         <div className="flex items-center justify-between">
           <div className="text-muted-foreground">Acknowledgement due</div>

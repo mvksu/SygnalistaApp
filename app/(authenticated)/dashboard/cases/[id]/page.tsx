@@ -120,8 +120,24 @@ export default async function CaseViewPage({
         </div>
 
         <div className="space-y-4">
-          <InfoPanel report={report} orgName={orgName} />
-          <SlaPanel reportId={String(report.id)} />
+
+          <Card>  
+            <CardHeader className="p-4">
+              <CardTitle className="text-base">Information</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 pt-0">
+              <InfoPanel report={report} orgName={orgName} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="p-4">
+              <CardTitle className="text-base">SLA</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 pt-0">
+              <SlaPanel reportId={String(report.id)} />
+            </CardContent>
+          </Card>
           <Card>
             <CardHeader className="p-4">
               <CardTitle className="text-base">Internal comments</CardTitle>

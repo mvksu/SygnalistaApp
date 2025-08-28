@@ -167,8 +167,7 @@ export default function InfoPanel({
 
   return (
     <div className="space-y-4">
-      <div className="rounded border p-4">
-        <div className="mb-2 text-base font-semibold">Information</div>
+      <div>
         <div className="space-y-2 text-sm">
           {info.map(i => (
             <div key={i.label} className="flex items-center justify-between">

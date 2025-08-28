@@ -44,11 +44,6 @@ export default function CaseTabs({
           <TabsContent value="logs">
             <CaseLogs logs={initialLogs} />
           </TabsContent>
-          <TabsContent value="internal">
-            <div className="text-sm text-muted-foreground">
-              Internal notes coming soon.
-            </div>
-          </TabsContent>
         </CardContent>
       </Tabs>
     </Card>

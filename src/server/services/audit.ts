@@ -36,5 +36,22 @@ export async function getAuditFingerprint(req: Request) {
   return { ipHash, uaHash }
 }
 
+// Resolve current actor's orgMemberId using Clerk context
+export async function getCurrentActorOrgMemberId(): Promise<{ orgMemberId: string | null; orgId: string | null }> {
+  const { auth } = await import("@clerk/nextjs/server")
+  const { getDbOrgIdForClerkOrg } = await import("@/src/server/orgs")
+  const { users } = await import("@/db/schema/users")
+  const { orgMembers } = await import("@/db/schema/orgMembers")
+  const { eq, and } = await import("drizzle-orm")
+
+  const { userId: clerkUserId, orgId: clerkOrgId } = await auth()
+  if (!clerkUserId || !clerkOrgId) return { orgMemberId: null, orgId: null }
+  const orgId = await getDbOrgIdForClerkOrg(clerkOrgId)
+  const dbUser = await db.query.users.findFirst({ where: eq(users.clerkId, clerkUserId) })
+  if (!dbUser) return { orgMemberId: null, orgId }
+  const member = await db.query.orgMembers.findFirst({ where: and(eq(orgMembers.userId, dbUser.id), eq(orgMembers.orgId, orgId)) })
+  return { orgMemberId: member?.id || null, orgId }
+}
+
 
 

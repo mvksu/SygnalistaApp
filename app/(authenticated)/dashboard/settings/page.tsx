@@ -4,7 +4,7 @@ import { reportCategories } from "@/db/schema/reportCategories"
 import { organizations } from "@/db/schema/organizations"
 import { eq } from "drizzle-orm"
 import { updateOrgSettings, addCategory, setCategoryActive } from "@/src/server/services/settings"
-import { getAuditFingerprint } from "@/src/server/services/audit"
+import { getAuditFingerprint, getCurrentActorOrgMemberId } from "@/src/server/services/audit"
 import { Button } from "tweakcn/ui/button"
 
 export default async function SettingsPage() {
@@ -23,7 +23,7 @@ export default async function SettingsPage() {
         <h2 className="text-lg font-semibold">Organization</h2>
         <form action={async (formData: FormData) => {
           "use server"
-          const req = (global as any).request as Request | undefined
+          const req = (global as unknown as { request?: Request } | undefined)?.request
           let ipHash: string | null = null
           let uaHash: string | null = null
           try {
@@ -39,7 +39,8 @@ export default async function SettingsPage() {
           const anonymousAllowed = !!formData.get("anonymousAllowed")
           const ackDays = Number(formData.get("ackDays") || 7)
           const feedbackMonths = Number(formData.get("feedbackMonths") || 3)
-          await updateOrgSettings(orgId, { name, locale, retentionDays: retention, anonymousAllowed, ackDays, feedbackMonths, actorId: null, ipHash, uaHash })
+          const { orgMemberId } = await getCurrentActorOrgMemberId()
+          await updateOrgSettings(orgId, { name, locale, retentionDays: retention, anonymousAllowed, ackDays, feedbackMonths, actorId: orgMemberId, ipHash, uaHash })
         }} className="rounded border p-4 grid gap-3 text-sm">
           <div className="grid gap-1">
             <label className="text-muted-foreground">Name</label>
@@ -47,7 +48,7 @@ export default async function SettingsPage() {
           </div>
           <div className="grid gap-1">
             <label className="text-muted-foreground">Default language</label>
-            <select name="locale" defaultValue={org?.locale || "pl-PL"} className="rounded border px-2 py-1 max-w-xs">
+            <select name="locale" defaultValue={String(org?.locale || "pl-PL")} className="rounded border px-2 py-1 max-w-xs">
               <option value="en-US">English</option>
               <option value="pl-PL">Polski</option>
             </select>
@@ -58,11 +59,11 @@ export default async function SettingsPage() {
           </div>
           <div className="grid gap-1 max-w-xs">
             <label className="text-muted-foreground">Acknowledge window (days)</label>
-            <input type="number" name="ackDays" defaultValue={(org as any)?.ackDays ?? 7} className="rounded border px-2 py-1" />
+            <input type="number" name="ackDays" defaultValue={(org as unknown as { ackDays?: number })?.ackDays ?? 7} className="rounded border px-2 py-1" />
           </div>
           <div className="grid gap-1 max-w-xs">
             <label className="text-muted-foreground">Feedback window (months)</label>
-            <input type="number" name="feedbackMonths" defaultValue={(org as any)?.feedbackMonths ?? 3} className="rounded border px-2 py-1" />
+            <input type="number" name="feedbackMonths" defaultValue={(org as unknown as { feedbackMonths?: number })?.feedbackMonths ?? 3} className="rounded border px-2 py-1" />
           </div>
           <div className="flex items-center gap-2">
             <input id="anonymousAllowed" type="checkbox" name="anonymousAllowed" defaultChecked={org?.anonymousAllowed ?? true} className="rounded border" />
@@ -93,7 +94,7 @@ export default async function SettingsPage() {
           <div className="mt-3">
             <form action={async (formData: FormData) => {
               "use server"
-              const req = (global as any).request as Request | undefined
+              const req = (global as unknown as { request?: Request } | undefined)?.request
               let ipHash: string | null = null
               let uaHash: string | null = null
               try {
@@ -105,7 +106,8 @@ export default async function SettingsPage() {
               } catch {}
               const name = String(formData.get("name") || "").trim()
               if (!name) return
-              await addCategory(orgId, name, null, ipHash, uaHash)
+              const { orgMemberId } = await getCurrentActorOrgMemberId()
+              await addCategory(orgId, name, orgMemberId, ipHash, uaHash)
             }} className="flex gap-2 items-end">
               <div className="grid gap-1">
                 <label className="text-xs text-muted-foreground">Name</label>
@@ -133,7 +135,7 @@ export default async function SettingsPage() {
                   <td className="p-2">{c.active ? "Active" : "Inactive"}</td>
                   <td className="p-2">
                     <form action={async () => { "use server"; 
-                      const req = (global as any).request as Request | undefined
+                      const req = (global as unknown as { request?: Request } | undefined)?.request
                       let ipHash: string | null = null
                       let uaHash: string | null = null
                       try {
@@ -143,7 +145,8 @@ export default async function SettingsPage() {
                           uaHash = fp.uaHash
                         }
                       } catch {}
-                      await setCategoryActive(orgId, c.id, !c.active, null, ipHash, uaHash) }}>
+                      const { orgMemberId } = await getCurrentActorOrgMemberId()
+                      await setCategoryActive(orgId, c.id, !c.active, orgMemberId, ipHash, uaHash) }}>
                       <Button type="submit" className="px-2 py-1 text-xs" variant="outline" size="sm">
                         {c.active ? "Deactivate" : "Activate"}
                       </Button>
