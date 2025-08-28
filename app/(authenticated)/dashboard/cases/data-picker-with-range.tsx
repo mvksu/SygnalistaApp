@@ -1,33 +1,33 @@
 "use client"
 
-import { addDays, format } from "date-fns"
+import { format } from "date-fns"
 import { Calendar as CalendarIcon } from "lucide-react"
 import * as React from "react"
 import { DateRange } from "react-day-picker"
 
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle
-} from "@/components/ui/card"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger
-} from "@/components/ui/popover"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
 
 export function DatePickerWithRange({
-  className
-}: React.HTMLAttributes<HTMLDivElement>) {
-  const [date, setDate] = React.useState<DateRange | undefined>({
-    from: new Date(2022, 0, 20),
-    to: addDays(new Date(2022, 0, 20), 20)
-  })
+  className,
+  value,
+  onChange
+}: React.HTMLAttributes<HTMLDivElement> & {
+  value?: DateRange
+  onChange?: (value: DateRange | undefined) => void
+}) {
+  const [date, setDate] = React.useState<DateRange | undefined>(value)
+
+  React.useEffect(() => {
+    setDate(value)
+  }, [value])
+
+  const handleSelect = (range: DateRange | undefined) => {
+    setDate(range)
+    onChange?.(range)
+  }
 
   return (
     <Popover>
@@ -60,7 +60,7 @@ export function DatePickerWithRange({
           mode="range"
           defaultMonth={date?.from}
           selected={date}
-          onSelect={setDate}
+          onSelect={handleSelect}
           numberOfMonths={2}
         />
       </PopoverContent>

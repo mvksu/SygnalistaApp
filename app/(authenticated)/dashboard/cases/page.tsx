@@ -1,12 +1,10 @@
 import { auth } from "@clerk/nextjs/server"
 import { listCases, getCaseSummary } from "@/src/server/services/cases"
-import { CaseTable } from "@/components/cases/case-table"
 import { db } from "@/db"
 import { reportCategories } from "@/db/schema/reportCategories"
 import { CasesControls } from "./cases-controls"
 import { eq } from "drizzle-orm"
 import { DataTable } from "../_components/data-table"
-import { DatePickerWithRange } from "./data-picker-with-range"
 
 export default async function CasesPage({
   searchParams
