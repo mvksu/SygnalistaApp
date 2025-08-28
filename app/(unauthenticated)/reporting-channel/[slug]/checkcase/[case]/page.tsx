@@ -87,6 +87,9 @@ export default function ReporterInboxPage() {
     setReportMeta(data.report)
     setAttachments(data.attachments || [])
     setMessages(data.messages || [])
+    try {
+      await fetch(`/api/reports/${data.report.id}/viewed`, { method: "POST" })
+    } catch {}
   }
 
   async function sendMessage() {

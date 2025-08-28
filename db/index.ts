@@ -17,6 +17,7 @@ import { exportsTable } from "./schema/exports"
 import { surveys, surveyOptions, surveyQuestions } from "./schema/surveys"
 import { onboardingSteps } from "./schema/userOnboarding"
 import { departments } from "./schema/departments"
+import { reportViews } from "./schema/reportViews"
 
 config({ path: ".env.local" })
 
@@ -41,9 +42,10 @@ const dbSchema = {
   reportingChannels,
   surveys,
   surveyQuestions,
-  surveyOptions
-  ,onboardingSteps
-  ,departments
+  surveyOptions,
+  onboardingSteps,
+  departments,
+  reportViews
 }
 
 function initializeDb(url: string) {

@@ -20,10 +20,12 @@ function toLocal(d: Date | string | null | undefined) {
 
 export default function InfoPanel({
   report,
-  orgName
+  orgName,
+  lastViewedByReporter
 }: {
   report: SelectReport
   orgName: string
+  lastViewedByReporter: Date | string | null
 }) {
   // 2) Local state for optimistic UI (fall back to a valid default if status is missing)
   const initialStatus = (report.status as ReportStatus | undefined) ?? "NEW"
@@ -104,6 +106,10 @@ export default function InfoPanel({
           value: toLocal((report as any).acknowledgedAt)
         },
         {
+          label: "Last reporter view",
+          value: toLocal(lastViewedByReporter)
+        },
+        {
           label: "Assignees",
           value: assignees.map(a => initials(a)).join(", ")
         },
@@ -115,6 +121,7 @@ export default function InfoPanel({
       status,
       report.createdAt,
       (report as any).acknowledgedAt,
+      lastViewedByReporter,
       orgName,
       assignees
     ]
