@@ -3,6 +3,13 @@
 import { useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 export default function MemberEditor({ id, name, email, role, phone, clerkId }: { id: string; name: string; email: string; role: "ADMIN" | "HANDLER" | "AUDITOR"; phone: string; clerkId: string }) {
   const [firstName, setFirst] = useState(name.split(" ")[0] || "")
@@ -74,11 +81,16 @@ export default function MemberEditor({ id, name, email, role, phone, clerkId }: 
         <div className="text-sm font-medium">Permissions</div>
         <div>
           <div className="text-xs text-muted-foreground mb-1">Role</div>
-          <select className="w-full rounded-md border px-2 py-2" value={memberRole} onChange={e => setMemberRole(e.target.value as any)}>
-            <option value="ADMIN">Administrator</option>
-            <option value="HANDLER">Handler</option>
-            <option value="AUDITOR">Auditor</option>
-          </select>
+          <Select value={memberRole} onValueChange={value => setMemberRole(value as any)}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select a role" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ADMIN">Administrator</SelectItem>
+              <SelectItem value="HANDLER">Handler</SelectItem>
+              <SelectItem value="AUDITOR">Auditor</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={saveRole} disabled={saving}>Update role</Button>
