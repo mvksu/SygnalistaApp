@@ -38,12 +38,14 @@ async function getOrCreateUserId() {
 
 export default async function Page() {
   const { orgId: clerkOrgId } = await auth()
-  let stats = { newCases: 0, openCases: 0, closedCases: 0 }
+  let caseCounts = { newCases: 0, openCases: 0, closedCases: 0 }
+  let stats: Awaited<ReturnType<typeof getStatistics>> | null = null
   let dbOrgId: string | null = null
   if (clerkOrgId) {
     const { getDbOrgIdForClerkOrg } = await import("@/src/server/orgs")
     dbOrgId = await getDbOrgIdForClerkOrg(clerkOrgId)
     if (dbOrgId) {
+      stats = await getStatistics(dbOrgId)
       // Compute simple counts for dashboard boxes
       const all = await db
         .select({ createdAt: reports.createdAt, status: reports.status })
@@ -60,7 +62,7 @@ export default async function Page() {
         if ((r.status as string) === "CLOSED") closedCases++
         else openCases++
       }
-      stats = { newCases, openCases, closedCases }
+      caseCounts = { newCases, openCases, closedCases }
     }
   }
   const dbUserId = await getOrCreateUserId()
@@ -211,19 +213,19 @@ export default async function Page() {
           <div className="text-muted-foreground text-xs uppercase">
             New cases (7d)
           </div>
-          <div className="mt-1 text-2xl font-semibold">{stats.newCases}</div>
+          <div className="mt-1 text-2xl font-semibold">{caseCounts.newCases}</div>
         </div>
         <div className="rounded-md border p-4">
           <div className="text-muted-foreground text-xs uppercase">
             Open cases
           </div>
-          <div className="mt-1 text-2xl font-semibold">{stats.openCases}</div>
+          <div className="mt-1 text-2xl font-semibold">{caseCounts.openCases}</div>
         </div>
         <div className="rounded-md border p-4">
           <div className="text-muted-foreground text-xs uppercase">
             Closed cases
           </div>
-          <div className="mt-1 text-2xl font-semibold">{stats.closedCases}</div>
+          <div className="mt-1 text-2xl font-semibold">{caseCounts.closedCases}</div>
         </div>
       </div>
 
@@ -233,7 +235,7 @@ export default async function Page() {
         </div>
         <div className="flex gap-4 px-4 lg:px-6">
           <div className="basis-1/2">
-            <ChartPieDonut />
+            <ChartPieDonut data={stats?.volume.pareto ?? []} />
           </div>
           <div className="basis-1/2">
             <ChartBarMixed />
