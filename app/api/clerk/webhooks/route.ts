@@ -4,6 +4,7 @@ import { users } from "@/db/schema/users"
 import { orgMembers } from "@/db/schema/orgMembers"
 import { eq, and } from "drizzle-orm"
 import { getDbOrgIdForClerkOrg, createDefaultOrg } from "@/src/server/orgs"
+import { writeAudit } from "@/src/server/services/audit"
 
 type DbRole = "ADMIN" | "HANDLER" | "AUDITOR"
 
@@ -98,8 +99,10 @@ export async function POST(req: NextRequest) {
           const existing = await db.query.orgMembers.findFirst({ where: and(eq(orgMembers.orgId, dbOrgId), eq(orgMembers.userId, dbUser.id)) })
           if (existing) {
             await db.update(orgMembers).set({ role: dbRole }).where(eq(orgMembers.id, existing.id))
+            await writeAudit({ orgId: dbOrgId, actorId: null, action: "MEMBER_ACCEPTED_UPDATED", targetType: "member", targetId: dbUser.id })
           } else {
             await db.insert(orgMembers).values({ orgId: dbOrgId, userId: dbUser.id, role: dbRole })
+            await writeAudit({ orgId: dbOrgId, actorId: null, action: "MEMBER_ACCEPTED", targetType: "member", targetId: dbUser.id })
           }
         }
       }

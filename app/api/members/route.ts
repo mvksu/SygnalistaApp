@@ -4,7 +4,8 @@ import { db } from "@/db"
 import { users } from "@/db/schema/users"
 import { orgMembers } from "@/db/schema/orgMembers"
 import { and, eq } from "drizzle-orm"
-import { writeAudit, getAuditFingerprint } from "@/src/server/services/audit"
+import { writeAudit, getAuditFingerprint, getCurrentActorOrgMemberId } from "@/src/server/services/audit"
+
 
 async function getDbOrgId() {
   const { orgId: clerkOrgId } = await auth()
@@ -14,6 +15,8 @@ async function getDbOrgId() {
 }
 
 export async function POST(req: NextRequest) {
+const { ipHash, uaHash } = await getAuditFingerprint(req)
+
   try {
     const { orgId: clerkOrgId } = await auth()
     if (!clerkOrgId)
@@ -57,6 +60,7 @@ export async function POST(req: NextRequest) {
       err instanceof Error ? err.message : typeof err === "string" ? err : JSON.stringify(err)
 
     const cc = await clerkClient()
+    const { orgMemberId: actorId } = await getCurrentActorOrgMemberId()
     try {
       await cc.organizations.getOrganizationList({ limit: 1 })
     } catch (err: unknown) {
@@ -111,11 +115,13 @@ export async function POST(req: NextRequest) {
           emailAddress: email,
           role: clerkRole
         })
+        await writeAudit({ orgId: orgId, actorId, action: "MEMBER_INVITED", targetType: "member_invite", targetId: email, ipHash, uaHash })
       } catch (err: unknown) {
         // Fallback: send a global account invitation (no org) so user can accept and be added later
         console.warn("[members.POST] org invitation failed; trying account invitation fallback")
         try {
           await cc.invitations.createInvitation({ emailAddress: email, notify: true, ignoreExisting: true })
+          await writeAudit({ orgId: orgId, actorId, action: "ACCOUNT_INVITE_SENT", targetType: "member_invite", targetId: email, ipHash, uaHash })
           return NextResponse.json({ invited: true, fallback: "account" }, { status: 202 })
         } catch (inviteErr: unknown) {
           const details = parseClerkError(inviteErr)
@@ -137,6 +143,7 @@ export async function POST(req: NextRequest) {
         userId: clerkUserId,
         role: clerkRole
       })
+      await writeAudit({ orgId: orgId, actorId, action: "MEMBER_ADDED", targetType: "member", targetId: clerkUserId, ipHash, uaHash })
     } catch (err: unknown) {
       const message = String(getErrorMessage(err) || "").toLowerCase()
       const status = (err as { status?: number })?.status
@@ -149,11 +156,13 @@ export async function POST(req: NextRequest) {
             emailAddress: email,
             role: clerkRole
           })
+          await writeAudit({ orgId: orgId, actorId, action: "MEMBER_INVITED", targetType: "member_invite", targetId: email, ipHash, uaHash })
           return NextResponse.json({ invited: true }, { status: 202 })
         } catch (inviteErr: unknown) {
           console.warn("[members.POST] org invite fallback failed; trying account invitation")
           try {
             await cc.invitations.createInvitation({ emailAddress: email, notify: true, ignoreExisting: true })
+            await writeAudit({ orgId: orgId, actorId, action: "ACCOUNT_INVITE_SENT", targetType: "member_invite", targetId: email, ipHash, uaHash })
             return NextResponse.json({ invited: true, fallback: "account" }, { status: 202 })
           } catch (secondErr: unknown) {
             const details = parseClerkError(secondErr)
@@ -230,11 +239,13 @@ export async function POST(req: NextRequest) {
       })
       if (!already) {
         await db.insert(orgMembers).values({ orgId, userId: dbUser.id, role })
+        await writeAudit({ orgId, actorId, action: "MEMBER_DB_LINKED", targetType: "member", targetId: dbUser.id, ipHash, uaHash })
       } else if (already.role !== role) {
         await db
           .update(orgMembers)
           .set({ role })
           .where(eq(orgMembers.id, already.id))
+        await writeAudit({ orgId, actorId, action: "MEMBER_ROLE_UPDATED", targetType: "member", targetId: dbUser.id, ipHash, uaHash })
       }
     } catch (err: unknown) {
       console.error("[members.POST] DB upsert orgMembers failed", err)
@@ -244,7 +255,6 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const { ipHash, uaHash } = await getAuditFingerprint(req)
     await writeAudit({ orgId, actorId: null, action: "MEMBER_UPSERTED", targetType: "member", targetId: dbUser.id, ipHash, uaHash })
     return NextResponse.json({ ok: true })
   } catch (e: unknown) {
