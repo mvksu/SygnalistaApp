@@ -10,52 +10,44 @@ import {
   CardDescription,
   CardFooter,
   CardHeader,
-  CardTitle
+  CardTitle,
 } from "@/components/ui/card"
 import {
   ChartConfig,
   ChartContainer,
   ChartTooltip,
-  ChartTooltipContent
+  ChartTooltipContent,
 } from "@/components/ui/chart"
-const chartData = [
-  { browser: "chrome", visitors: 275, fill: "var(--color-chrome)" },
-  { browser: "safari", visitors: 200, fill: "var(--color-safari)" },
-  { browser: "firefox", visitors: 287, fill: "var(--color-firefox)" },
-  { browser: "edge", visitors: 173, fill: "var(--color-edge)" },
-  { browser: "other", visitors: 190, fill: "var(--color-other)" }
-]
 
-const chartConfig = {
-  visitors: {
-    label: "Visitors"
-  },
-  chrome: {
-    label: "Chrome",
-    color: "var(--chart-1)"
-  },
-  safari: {
-    label: "Safari",
-    color: "var(--chart-2)"
-  },
-  firefox: {
-    label: "Firefox",
-    color: "var(--chart-3)"
-  },
-  edge: {
-    label: "Edge",
-    color: "var(--chart-4)"
-  },
-  other: {
-    label: "Other",
-    color: "var(--chart-5)"
-  }
-} satisfies ChartConfig
+type PieDatum = { category: string; count: number }
 
-export function ChartPieDonut() {
-  const totalVisitors = React.useMemo(() => {
-    return chartData.reduce((acc, curr) => acc + curr.visitors, 0)
-  }, [])
+export function ChartPieDonut({ data }: { data: PieDatum[] }) {
+  const chartData = React.useMemo(
+    () =>
+      data.map((item, idx) => ({
+        ...item,
+        fill: `var(--chart-${idx + 1})`,
+      })),
+    [data]
+  )
+
+  const chartConfig = React.useMemo(() => {
+    const entries = Object.fromEntries(
+      data.map((item, idx) => [
+        item.category,
+        { label: item.category, color: `var(--chart-${idx + 1})` },
+      ])
+    )
+    return {
+      count: { label: "Cases" },
+      ...entries,
+    } satisfies ChartConfig
+  }, [data])
+
+  const total = React.useMemo(
+    () => data.reduce((acc, curr) => acc + curr.count, 0),
+    [data]
+  )
 
   return (
     <Card className="flex h-full flex-col">
@@ -75,8 +67,8 @@ export function ChartPieDonut() {
             />
             <Pie
               data={chartData}
-              dataKey="visitors"
-              nameKey="browser"
+              dataKey="count"
+              nameKey="category"
               innerRadius={60}
               strokeWidth={5}
             >
@@ -95,18 +87,19 @@ export function ChartPieDonut() {
                           y={viewBox.cy}
                           className="fill-foreground text-3xl font-bold"
                         >
-                          {totalVisitors.toLocaleString()}
+                          {total.toLocaleString()}
                         </tspan>
                         <tspan
                           x={viewBox.cx}
                           y={(viewBox.cy || 0) + 24}
                           className="fill-muted-foreground"
                         >
-                          Visitors
+                          Cases
                         </tspan>
                       </text>
                     )
                   }
+                  return null
                 }}
               />
             </Pie>
@@ -118,9 +111,10 @@ export function ChartPieDonut() {
           Trending up by 5.2% this month <TrendingUp className="h-4 w-4" />
         </div>
         <div className="text-muted-foreground leading-none">
-          Showing total visitors for the last 6 months
+          Showing total cases for the last 6 months
         </div>
       </CardFooter>
     </Card>
   )
 }
+
