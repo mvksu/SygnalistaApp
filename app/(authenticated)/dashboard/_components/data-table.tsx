@@ -45,13 +45,12 @@ import {
   ColumnsIcon,
   GripVerticalIcon,
   MoreVerticalIcon,
-  PlusIcon,
   UserPlus
 } from "lucide-react"
 import { z } from "zod"
 
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
   DropdownMenu,
@@ -88,6 +87,8 @@ import {
   SheetTrigger
 } from "@/components/ui/sheet"
 import { DatePickerWithRange } from "../cases/data-picker-with-range"
+import { useUser } from "@clerk/nextjs"
+import { DateRange } from "react-day-picker"
 
 export const schema = z.object({
   id: z.string(),
@@ -342,6 +343,7 @@ export function DataTable({
 }: {
   data: z.infer<typeof schema>[]
 }) {
+  const { user } = useUser()
   const [data, setData] = React.useState(() => initialData)
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] =
@@ -354,6 +356,10 @@ export function DataTable({
     pageIndex: 0,
     pageSize: 10
   })
+  const [view, setView] = React.useState<"all" | "assigned" | "unassigned">(
+    "all"
+  )
+  const [dateRange, setDateRange] = React.useState<DateRange | undefined>()
   const sortableId = React.useId()
   const sensors = useSensors(
     useSensor(MouseSensor, {}),
@@ -361,13 +367,36 @@ export function DataTable({
     useSensor(KeyboardSensor, {})
   )
 
+  const filteredData = React.useMemo(() => {
+    return data
+      .filter(row => {
+        if (view === "unassigned") return row.assignees.length === 0
+        if (view === "assigned") {
+          const uid = user?.id
+          return uid ? row.assignees.some(a => a.id === uid) : false
+        }
+        return true
+      })
+      .filter(row => {
+        if (!dateRange?.from && !dateRange?.to) return true
+        const created = new Date(row.createdAt as Date | string)
+        if (dateRange?.from && created < dateRange.from) return false
+        if (dateRange?.to) {
+          const end = new Date(dateRange.to)
+          end.setHours(23, 59, 59, 999)
+          if (created > end) return false
+        }
+        return true
+      })
+  }, [data, view, dateRange, user?.id])
+
   const dataIds = React.useMemo<UniqueIdentifier[]>(
-    () => data?.map(({ id }) => id) || [],
-    [data]
+    () => filteredData.map(({ id }) => id),
+    [filteredData]
   )
 
   const table = useReactTable({
-    data,
+    data: filteredData,
     columns,
     state: {
       sorting,
@@ -394,24 +423,30 @@ export function DataTable({
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
     if (active && over && active.id !== over.id) {
-      setData(data => {
-        const oldIndex = dataIds.indexOf(active.id)
-        const newIndex = dataIds.indexOf(over.id)
-        return arrayMove(data, oldIndex, newIndex)
+      setData(prev => {
+        const oldIndex = prev.findIndex(r => r.id === active.id)
+        const newIndex = prev.findIndex(r => r.id === over.id)
+        return arrayMove(prev, oldIndex, newIndex)
       })
     }
   }
 
   return (
     <Tabs
-      defaultValue="outline"
+      value={view}
+      onValueChange={val => setView(val as "all" | "assigned" | "unassigned")}
       className="flex w-full flex-col justify-start gap-6"
     >
       <div className="flex items-center justify-between px-4 lg:px-6">
         <Label htmlFor="view-selector" className="sr-only">
           View
         </Label>
-        <Select defaultValue="outline">
+        <Select
+          value={view}
+          onValueChange={val =>
+            setView(val as "all" | "assigned" | "unassigned")
+          }
+        >
           <SelectTrigger
             className="flex w-fit @4xl/main:hidden"
             id="view-selector"
@@ -419,33 +454,15 @@ export function DataTable({
             <SelectValue placeholder="Select a view" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="outline">Assigned to me</SelectItem>
-            <SelectItem value="past-performance">Unassigned</SelectItem>
-            <SelectItem value="key-personnel">All</SelectItem>
-            <SelectItem value="focus-documents">New</SelectItem>
+            <SelectItem value="all">All</SelectItem>
+            <SelectItem value="assigned">Assigned to me</SelectItem>
+            <SelectItem value="unassigned">Unassigned</SelectItem>
           </SelectContent>
         </Select>
         <TabsList className="hidden @4xl/main:flex">
-          <TabsTrigger value="outline">Outline</TabsTrigger>
-          <TabsTrigger value="past-performance" className="gap-1">
-            Past Performance{" "}
-            <Badge
-              variant="secondary"
-              className="bg-muted-foreground/30 flex h-5 w-5 items-center justify-center rounded-full"
-            >
-              3
-            </Badge>
-          </TabsTrigger>
-          <TabsTrigger value="key-personnel" className="gap-1">
-            Key Personnel{" "}
-            <Badge
-              variant="secondary"
-              className="bg-muted-foreground/30 flex h-5 w-5 items-center justify-center rounded-full"
-            >
-              2
-            </Badge>
-          </TabsTrigger>
-          <TabsTrigger value="focus-documents">Focus Documents</TabsTrigger>
+          <TabsTrigger value="all">All</TabsTrigger>
+          <TabsTrigger value="assigned">Assigned to me</TabsTrigger>
+          <TabsTrigger value="unassigned">Unassigned</TabsTrigger>
         </TabsList>
         <div className="flex items-center gap-2">
           <DropdownMenu>
@@ -481,11 +498,11 @@ export function DataTable({
                 })}
             </DropdownMenuContent>
           </DropdownMenu>
-          <DatePickerWithRange />
+          <DatePickerWithRange value={dateRange} onChange={setDateRange} />
         </div>
       </div>
       <TabsContent
-        value="outline"
+        value={view}
         className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6"
       >
         <div className="overflow-hidden rounded-lg border">
