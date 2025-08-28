@@ -5,14 +5,9 @@ import { users } from "./users"
 
 export const reporterMode = pgEnum("reporter_mode", ["ANON", "IDENTIFIED"])
 export const reportStatus = pgEnum("report_status", [
-  "OPEN",
-  "ACKNOWLEDGED",
-  "IN_PROGRESS",
-  "FEEDBACK_GIVEN",
-  "CLOSED",
-  "RESOLVED",
   "NEW",
-  "ACTIVE"
+  "OPEN",
+  "CLOSED"
 ])
 
 export const reports = pgTable("reports", {
@@ -24,7 +19,7 @@ export const reports = pgTable("reports", {
     .notNull()
     .references(() => reportCategories.id, { onDelete: "restrict" }),
   subject: text("subject"),
-  status: reportStatus("status").default("OPEN").notNull(),
+  status: reportStatus("status").default("NEW").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   acknowledgedAt: timestamp("acknowledged_at"),
   ackDueAt: timestamp("ack_due_at"),

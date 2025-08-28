@@ -8,14 +8,9 @@ import { Button } from "@/components/ui/button"
 import { UserPlus } from "lucide-react"
 
 type ReportStatus =
-  | "IN_PROGRESS"
-  | "OPEN"
-  | "ACKNOWLEDGED"
-  | "FEEDBACK_GIVEN"
-  | "CLOSED"
-  | "RESOLVED"
   | "NEW"
-  | "ACTIVE"
+  | "OPEN"
+  | "CLOSED"
 
 function toLocal(d: Date | string | null | undefined) {
   if (!d) return "—"
@@ -180,11 +175,9 @@ export default function InfoPanel({
                   onChange={e => updateStatus(e.target.value as ReportStatus)}
                   disabled={isPending}
                 >
-                  <option value="OPEN">OPEN</option>
-                  <option value="ACKNOWLEDGED">ACKNOWLEDGED</option>
-                  <option value="IN_PROGRESS">IN PROGRESS</option>
+                  <option value="NEW">New</option>
+                  <option value="OPEN">Open</option>
                   <option value="CLOSED">Closed</option>
-                  <option value="FEEDBACK_GIVEN">Feedback Given</option>
                 </select>
               ) : i.label === "Assignees" ? (
                 <div className="flex items-center gap-2">

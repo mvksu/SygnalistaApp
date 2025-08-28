@@ -5,13 +5,7 @@ import { z } from "zod"
 import { logReport } from "@/src/server/services/reportLogs"
 
 const Body = z.object({
-  status: z.enum([
-    "ACKNOWLEDGED",
-    "FEEDBACK_GIVEN",
-    "IN_PROGRESS",
-    "CLOSED",
-    "OPEN"
-  ])
+  status: z.enum(["NEW", "OPEN", "CLOSED"])
 })
 
 export async function POST(

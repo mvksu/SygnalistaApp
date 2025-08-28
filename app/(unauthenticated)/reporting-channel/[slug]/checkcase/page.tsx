@@ -6,5 +6,5 @@ export default async function CheckCasePage({
   params: Promise<{ slug: string }>
 }) {
   const { slug } = await params // ✅ Next 15 requires awaiting
-  return <ClientCheckCase slug={slug} />
+  return <ClientCheckCase slug={slug}  />
 }

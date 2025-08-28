@@ -14,7 +14,7 @@ export async function acknowledgeReport(options: { orgId: string; reportId: stri
   const now = new Date()
   const [updated] = await db
     .update(reports)
-    .set({ acknowledgedAt: now, status: "ACKNOWLEDGED" as any })
+    .set({ acknowledgedAt: now, status: "OPEN" as any })
     .where(eq(reports.id, options.reportId))
     .returning()
 
@@ -32,7 +32,7 @@ export async function acknowledgeReport(options: { orgId: string; reportId: stri
 export async function giveFeedback(options: { orgId: string; reportId: string; actorId?: string | null }) {
   const [updated] = await db
     .update(reports)
-    .set({ status: "FEEDBACK_GIVEN" as any })
+    .set({ status: "OPEN" as any })
     .where(eq(reports.id, options.reportId))
     .returning()
 
