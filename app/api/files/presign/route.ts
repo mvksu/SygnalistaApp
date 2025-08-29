@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
       filename,
       contentType,
       size,
-      checksum,
+      checksum: checksum || "", // Use empty string if checksum not provided
       orgId: resolvedOrgId!,
       reportId,
       messageId,
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
         storageKey,
         filename,
         size,
-        contentHash: checksum,
+        contentHash: checksum || "", // Use empty string if checksum not provided
       })
     }
 

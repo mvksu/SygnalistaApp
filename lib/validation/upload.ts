@@ -12,8 +12,8 @@ export const presignedUploadSchema = z.object({
   filename: z.string().min(1).max(255),
   contentType: z.string().min(1),
   size: z.number().positive().max(50 * 1024 * 1024), // 50MB max
-  // Require a checksum for integrity; client should compute (e.g., SHA-256 hex)
-  checksum: z.string().min(32).max(128),
+  // Optional checksum for integrity; client should compute (e.g., SHA-256 hex) if provided
+  checksum: z.string().min(32).max(128).optional(),
   // Optional association targets to help generate organized storage keys
   reportId: z.string().optional(),
   messageId: z.string().optional(),

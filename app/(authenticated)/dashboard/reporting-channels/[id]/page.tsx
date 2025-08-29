@@ -189,8 +189,7 @@ export default async function ReportingChannelDetail({ params }: { params: Promi
                       </Button>
                     </DialogTrigger>
                     <DialogContent>
-                        <Dialog.Title className="text-lg font-medium">Add auto-assignment member</Dialog.Title>
-
+                      <h2 className="text-lg font-medium mb-4">Add auto-assignment member</h2>
                       <form action={addAutoAssignmentMember} className="space-y-4">
                         <input type="hidden" name="channelId" value={channel.id} />
                         <div className="space-y-2">

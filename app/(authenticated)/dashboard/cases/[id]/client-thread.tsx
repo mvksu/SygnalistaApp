@@ -15,6 +15,7 @@ type ThreadItem = {
   createdAt: string
   avatarUrl?: string
   attachments?: Array<{ id: string; filename: string; storageKey: string; size: number }>
+  audioUrl?: string
 }
 
 type Props = {
@@ -41,29 +42,14 @@ export default function CaseThreadClient({ reportId, initialThread }: Props) {
     return resp
   }
 
-  async function acknowledge() {
-    try {
-      setActionLoading("ack")
-      await postJson(`/api/reports/${reportId}/acknowledge`)
-    } finally {
-      setActionLoading(null)
-    }
-  }
 
-  async function giveFeedback() {
-    try {
-      setActionLoading("feedback")
-      await postJson(`/api/reports/${reportId}/feedback`)
-    } finally {
-      setActionLoading(null)
-    }
-  }
-
-  async function sendMessage() {
-    if (!message.trim()) return
+  async function sendMessage(messageText?: string) {
+    const textToSend = messageText || message.trim()
+    // Allow sending if there's text OR files (files can be sent without text)
+    if (!textToSend && files.length === 0) return
     setSubmitting(true)
     try {
-      const res = await postJson(`/api/reports/${reportId}/messages`, { body: message.trim() })
+      const res = await postJson(`/api/reports/${reportId}/messages`, { body: textToSend })
       const { messageId } = await res.json()
       // Optimistically add the new message first so subsequent attachment updates can target it
       const createdAt = new Date().toISOString()
@@ -72,7 +58,7 @@ export default function CaseThreadClient({ reportId, initialThread }: Props) {
         {
           id: messageId,
           sender: "HANDLER",
-          body: message.trim(),
+          body: textToSend || "", // Ensure empty string if no text
           createdAt,
           attachments: []
         }
@@ -80,7 +66,6 @@ export default function CaseThreadClient({ reportId, initialThread }: Props) {
 
       // Upload attachments if any, then attach to the created message
       for (const file of files) {
-        const checksum = "" // optional: compute client-side if desired
         const presignRes = await fetch(`/api/files/presign`, {
           method: "POST",
           headers: { "content-type": "application/json" },
@@ -88,7 +73,6 @@ export default function CaseThreadClient({ reportId, initialThread }: Props) {
             filename: file.name,
             contentType: file.type || "application/octet-stream",
             size: file.size,
-            checksum,
             reportId,
             messageId,
           })
@@ -101,11 +85,16 @@ export default function CaseThreadClient({ reportId, initialThread }: Props) {
         if (!uploadResp.ok) throw new Error("Upload failed")
         // Optimistically append attachment to the last message
         const isAudio = (file.type || "").startsWith("audio/") || /\.(webm|ogg|mp3|wav|m4a)$/i.test(file.name)
-        setThread(prev => prev.map(msg => msg.id === messageId ? {
-          ...msg,
-          attachments: [...(msg.attachments || []), { id: crypto.randomUUID(), filename: file.name, storageKey, size: file.size }],
-          ...(isAudio ? { /* set audioUrl so chat renders audio player */ audioUrl: `/api/files/download?key=${encodeURIComponent(storageKey)}` } : {})
-        } : msg))
+        console.log("Uploading file:", file.name, "isAudio:", isAudio, "storageKey:", storageKey)
+        setThread(prev => {
+          const updated = prev.map(msg => msg.id === messageId ? {
+            ...msg,
+            attachments: [...(msg.attachments || []), { id: crypto.randomUUID(), filename: file.name, storageKey, size: file.size }],
+            ...(isAudio ? { audioUrl: `/api/files/download?key=${encodeURIComponent(storageKey)}` } : {})
+          } : msg)
+          console.log("Updated thread:", updated)
+          return updated
+        })
       }
       setMessage("")
       setFiles([])
@@ -119,9 +108,9 @@ export default function CaseThreadClient({ reportId, initialThread }: Props) {
     <Chat
       messages={thread}
       submitting={submitting}
-      onSend={async ({ text }) => {
-        setMessage(text)
-        await sendMessage()
+      onSend={async ({ text, files: newFiles }) => {
+        setFiles(newFiles)
+        await sendMessage(text)
       }}
     />
   )

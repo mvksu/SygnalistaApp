@@ -8,7 +8,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const { id: reportId } = await params
     await assertCanAccessReport({ orgId, userId, role, reportId })
     const { body } = await request.json()
-    if (!body) return NextResponse.json({ error: "Missing body" }, { status: 400 })
+    if (!body && body !== "") return NextResponse.json({ error: "Missing body" }, { status: 400 })
     const msg = await addHandlerMessage({ orgId, reportId, body, actorId: userId })
     return NextResponse.json({ ok: true, messageId: msg.id })
   } catch (err: any) {

@@ -59,7 +59,7 @@ export function ChatMessage({ isUser, children, senderLabel, createdAt, avatarUr
             {children}
           </div>
         </div>
-        {!isUser && <MessageActions />}
+        {/* {!isUser && <MessageActions />} */}
       </div>
     </article>
   )
