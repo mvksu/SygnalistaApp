@@ -127,6 +127,20 @@
       "when": 1756400336036,
       "tag": "0017_flaky_centennial",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1756422767105,
+      "tag": "0018_open_pretty_boy",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1756425375579,
+      "tag": "0019_absurd_major_mapleleaf",
+      "breakpoints": true
     }
   ]
 }

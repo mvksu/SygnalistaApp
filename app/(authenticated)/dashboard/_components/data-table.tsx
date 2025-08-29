@@ -272,11 +272,6 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
     cell: () => "—"
   },
   {
-    accessorKey: "ackDueAt",
-    header: "Ack due",
-    cell: ({ row }) => formatDate(row.original.ackDueAt)
-  },
-  {
     id: "ackChip",
     header: "Ack",
     cell: ({ row }) => chip(row.original.ackStatus, row.original.ackDueAt)
@@ -498,7 +493,81 @@ export function DataTable({
                 })}
             </DropdownMenuContent>
           </DropdownMenu>
-          <DatePickerWithRange value={dateRange} onChange={setDateRange} />
+          <DatePickerWithRange value={dateRange} onChange={v => setDateRange(v)} />
+          <Button
+            onClick={() => {
+              const rows = table.getFilteredSelectedRowModel().rows
+              if (!rows.length) return
+              const escape = (val: unknown) => {
+                if (val === null || val === undefined) return ""
+                const s = String(val)
+                if (s.includes("\"") || s.includes(",") || s.includes("\n")) {
+                  return `"${s.replaceAll('"', '""')}"`
+                }
+                return s
+              }
+              const toIso = (d: unknown) => {
+                if (!d) return ""
+                try {
+                  const dt = d instanceof Date ? d : new Date(String(d))
+                  return isNaN(dt.getTime()) ? "" : dt.toISOString()
+                } catch {
+                  return ""
+                }
+              }
+              const header = [
+                "case_id",
+                "subject",
+                "category",
+                "status",
+                "created",
+                "acknowledged",
+                "ack_due",
+                "feedback_due",
+                "ack_status",
+                "feedback_status",
+                "assignees"
+              ]
+              const csvLines = [header.join(",")]
+              for (const r of rows) {
+                const o = r.original
+                const assignees = Array.isArray(o.assignees)
+                  ? o.assignees.map(a => a.name || "").filter(Boolean).join("; ")
+                  : ""
+                csvLines.push(
+                  [
+                    escape(o.caseId),
+                    escape(o.subject || ""),
+                    escape(o.category),
+                    escape(o.status),
+                    escape(toIso(o.createdAt)),
+                    escape(toIso(o.acknowledgedAt)),
+                    escape(toIso(o.ackDueAt)),
+                    escape(toIso(o.feedbackDueAt)),
+                    escape(o.ackStatus),
+                    escape(o.feedbackStatus),
+                    escape(assignees)
+                  ].join(",")
+                )
+              }
+              const blob = new Blob([csvLines.join("\n")], { type: "text/csv;charset=utf-8" })
+              const url = URL.createObjectURL(blob)
+              const a = document.createElement("a")
+              const ts = new Date()
+                .toISOString()
+                .replaceAll(":", "-")
+                .slice(0, 19)
+              a.href = url
+              a.download = `cases-${ts}.csv`
+              document.body.appendChild(a)
+              a.click()
+              a.remove()
+              URL.revokeObjectURL(url)
+            }}
+            disabled={table.getFilteredSelectedRowModel().rows.length === 0}
+          >
+            Export cases
+          </Button>
         </div>
       </div>
       <TabsContent

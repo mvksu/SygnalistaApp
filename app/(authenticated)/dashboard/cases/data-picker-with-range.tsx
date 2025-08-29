@@ -14,7 +14,8 @@ export function DatePickerWithRange({
   className,
   value,
   onChange
-}: React.HTMLAttributes<HTMLDivElement> & {
+}: {
+  className?: string
   value?: DateRange
   onChange?: (value: DateRange | undefined) => void
 }) {
@@ -37,7 +38,8 @@ export function DatePickerWithRange({
           variant={"outline"}
           className={cn(
             "max-w-[300px] justify-start text-left font-normal flex",
-            !date && "text-muted-foreground"
+            !date && "text-muted-foreground",
+            className
           )}
         >
           <CalendarIcon />

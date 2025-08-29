@@ -5,6 +5,8 @@ import { reportingChannels } from "@/db/schema/reportingChannels"
 import { getDbOrgIdForClerkOrg } from "@/src/server/orgs"
 import { eq, and } from "drizzle-orm"
 import { writeAudit, getAuditFingerprint } from "@/src/server/services/audit"
+import { orgMembers } from "@/db/schema/orgMembers"
+import { users } from "@/db/schema/users"
 
 export async function GET() {
   const { orgId: clerkOrgId } = await auth()
@@ -18,6 +20,16 @@ export async function POST(req: NextRequest) {
   const { orgId: clerkOrgId } = await auth()
   if (!clerkOrgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const orgId = await getDbOrgIdForClerkOrg(clerkOrgId)
+  // Resolve current user's orgMemberId for this org to record as creator
+  const { userId: clerkUserId } = await auth()
+  let creatorMemberId: string | null = null
+  if (clerkUserId) {
+    const dbUser = await db.query.users.findFirst({ where: eq(users.clerkId, clerkUserId) })
+    if (dbUser) {
+      const member = await db.query.orgMembers.findFirst({ where: and(eq(orgMembers.orgId, orgId), eq(orgMembers.userId, dbUser.id)) })
+      creatorMemberId = member?.id || null
+    }
+  }
   const body = await req.json().catch(() => null)
   const name = String(body?.name || "").trim()
   const slug = String(body?.slug || "").trim()
@@ -26,7 +38,7 @@ export async function POST(req: NextRequest) {
   if (!name || !slug) return NextResponse.json({ error: "name and slug required" }, { status: 400 })
   const [row] = await db
     .insert(reportingChannels)
-    .values({ orgId, name, slug, type, defaultLanguage })
+    .values({ orgId, name, slug, type, defaultLanguage, createdByOrgMemberId: creatorMemberId || undefined })
     .returning()
   const { ipHash, uaHash } = await getAuditFingerprint(req)
   await writeAudit({ orgId, actorId: null, action: "CHANNEL_CREATED", targetType: "channel", targetId: row.id, ipHash, uaHash })

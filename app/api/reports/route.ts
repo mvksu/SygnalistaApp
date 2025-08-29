@@ -12,7 +12,9 @@ import { generateCaseId, generateCaseKey, hashCaseKey } from "@/lib/ids"
 import { encryptField } from "@/lib/crypto/encryption"
 import { auth } from "@clerk/nextjs/server"
 import { reportingChannels } from "@/db/schema/reportingChannels"
+import { reportAssignees } from "@/db/schema/reportAssignees"
 import { organizations } from "@/db/schema/organizations"
+import { writeAudit, getAuditFingerprint } from "@/src/server/services/audit"
 
 // Compute feedback due (3 months) and initial SLA windows server-side
 function addMonths(date: Date, months: number): Date {
@@ -55,9 +57,6 @@ export async function POST(request: NextRequest) {
     const { categoryId, body: messageBody, anonymous, contact,  attachments: uploaded } = parsed.data
 
     // Rate limiting should be applied by a middleware in production; optionally add lightweight guard here
-    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || undefined
-
-
     const now = new Date()
     const org = await db.query.organizations.findFirst({ where: eq(organizations.id, orgId!) })
     const receipt = generateCaseId()
@@ -89,6 +88,18 @@ export async function POST(request: NextRequest) {
         caseKeyHash: passphraseHash,
       })
       .returning()
+    // Auto-assign: if report submitted via a channel with a recorded creator, assign them
+    if (channelSlug) {
+      const channel = await db.query.reportingChannels.findFirst({ where: eq(reportingChannels.slug, channelSlug) })
+      const creatorMemberId = (channel as any)?.createdByOrgMemberId as string | undefined
+      if (creatorMemberId) {
+        await db
+          .insert(reportAssignees)
+          .values({ reportId: inserted.id, orgMemberId: creatorMemberId, addedByOrgMemberId: creatorMemberId })
+          .onConflictDoNothing()
+      }
+    }
+
 
     // First message saved encrypted under org key
     const firstMessageEncrypted = encryptField(orgId!, messageBody)
@@ -161,6 +172,20 @@ export async function POST(request: NextRequest) {
         await db.insert(attachments).values(rowsToInsert as any)
       }
     }
+
+    // Audit: record report creation
+    try {
+      const { ipHash, uaHash } = await getAuditFingerprint(request)
+      await writeAudit({
+        orgId: orgId!,
+        actorId: null,
+        action: "REPORT_CREATED",
+        targetType: "report",
+        targetId: inserted.id,
+        ipHash,
+        uaHash,
+      })
+    } catch {}
 
     return NextResponse.json({
       id: inserted.id,
