@@ -3,11 +3,14 @@
 import { CheckCircle2, Copy, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { CopyButton } from "@/components/ui/copy-button"
+import { useParams } from "next/navigation"
 
-type Props = { params: { code: string; caseKey: string } }
+type Props = { params: Promise<{ code: string; caseKey: string }> }
 
 export default function ReceiptView({ params }: Props) {
-  const { code, passphrase } = params
+  const pm = useParams<{ code: string; caseKey: string }>()
+  const { code, caseKey } = pm
+
   return (
     <div className="container mx-auto max-w-3xl py-10">
       <div className="mb-4 flex items-center gap-2 text-green-600">

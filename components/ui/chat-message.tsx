@@ -13,6 +13,7 @@ type ChatMessageProps = {
   children: React.ReactNode
   senderLabel?: string
   createdAt?: string | Date
+  avatarUrl?: string
 }
 
 function formatDate(input?: string | Date) {
@@ -21,7 +22,7 @@ function formatDate(input?: string | Date) {
   return isNaN(d.getTime()) ? "" : d.toLocaleString()
 }
 
-export function ChatMessage({ isUser, children, senderLabel, createdAt }: ChatMessageProps) {
+export function ChatMessage({ isUser, children, senderLabel, createdAt, avatarUrl }: ChatMessageProps) {
   return (
     <article
       className={cn(
@@ -35,11 +36,13 @@ export function ChatMessage({ isUser, children, senderLabel, createdAt }: ChatMe
           isUser ? "order-1" : "border border-black/[0.08] shadow-sm"
         )}
         src={
-          isUser
-            ? "https://raw.githubusercontent.com/origin-space/origin-images/refs/heads/main/exp2/user-02_mlqqqt.png"
-            : "https://raw.githubusercontent.com/origin-space/origin-images/refs/heads/main/exp2/user-01_i5l7tp.png"
+          avatarUrl && avatarUrl.length > 0
+            ? avatarUrl
+            : isUser
+              ? "https://raw.githubusercontent.com/origin-space/origin-images/refs/heads/main/exp2/user-02_mlqqqt.png"
+              : "https://raw.githubusercontent.com/origin-space/origin-images/refs/heads/main/exp2/user-01_i5l7tp.png"
         }
-        alt={isUser ? "User profile" : "Bart logo"}
+        alt={isUser ? "User profile" : "Reporter"}
         width={40}
         height={40}
       />

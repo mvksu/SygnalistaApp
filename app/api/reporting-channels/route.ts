@@ -36,6 +36,11 @@ export async function POST(req: NextRequest) {
   const type = String(body?.type || "links") as any
   const defaultLanguage = String(body?.defaultLanguage || "auto")
   if (!name || !slug) return NextResponse.json({ error: "name and slug required" }, { status: 400 })
+  // Enforce unique slug
+  const slugExists = await db.query.reportingChannels.findFirst({ where: eq(reportingChannels.slug, slug) })
+  if (slugExists) {
+    return NextResponse.json({ error: "Slug already in use" }, { status: 409 })
+  }
   const [row] = await db
     .insert(reportingChannels)
     .values({ orgId, name, slug, type, defaultLanguage, createdByOrgMemberId: creatorMemberId || undefined })

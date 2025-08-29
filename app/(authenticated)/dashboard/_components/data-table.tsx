@@ -247,7 +247,7 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
             row.original.assignees.map(a => (
               <Avatar
                 key={a.id}
-                className="mr-1 inline-flex h-4 w-4 bg-blue-100 text-xs"
+                className="mr-1 inline-flex h-4 w-4 bg-blue-100 text-xs ring-background rounded-full ring-2"
               >
                 {a.name
                   ? a.name.charAt(0) + a.name.charAt(a.name.length - 1)

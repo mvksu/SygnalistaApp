@@ -13,6 +13,8 @@ type ThreadItem = {
   sender: "REPORTER" | "HANDLER"
   body: string
   createdAt: string
+  avatarUrl?: string
+  attachments?: Array<{ id: string; filename: string; storageKey: string; size: number }>
 }
 
 type Props = {
@@ -63,7 +65,20 @@ export default function CaseThreadClient({ reportId, initialThread }: Props) {
     try {
       const res = await postJson(`/api/reports/${reportId}/messages`, { body: message.trim() })
       const { messageId } = await res.json()
-      // Upload attachments if any
+      // Optimistically add the new message first so subsequent attachment updates can target it
+      const createdAt = new Date().toISOString()
+      setThread(prev => ([
+        ...prev,
+        {
+          id: messageId,
+          sender: "HANDLER",
+          body: message.trim(),
+          createdAt,
+          attachments: []
+        }
+      ]))
+
+      // Upload attachments if any, then attach to the created message
       for (const file of files) {
         const checksum = "" // optional: compute client-side if desired
         const presignRes = await fetch(`/api/files/presign`, {
@@ -79,21 +94,19 @@ export default function CaseThreadClient({ reportId, initialThread }: Props) {
           })
         })
         if (!presignRes.ok) throw new Error("Failed to presign upload")
-        const { uploadUrl, token } = await presignRes.json()
+        const { uploadUrl, token, storageKey } = await presignRes.json()
         const formData = new FormData()
         formData.append("file", file)
         const uploadResp = await fetch(uploadUrl, { method: "POST", headers: token ? { authorization: `Bearer ${token}` } : undefined, body: formData })
         if (!uploadResp.ok) throw new Error("Upload failed")
+        // Optimistically append attachment to the last message
+        const isAudio = (file.type || "").startsWith("audio/") || /\.(webm|ogg|mp3|wav|m4a)$/i.test(file.name)
+        setThread(prev => prev.map(msg => msg.id === messageId ? {
+          ...msg,
+          attachments: [...(msg.attachments || []), { id: crypto.randomUUID(), filename: file.name, storageKey, size: file.size }],
+          ...(isAudio ? { /* set audioUrl so chat renders audio player */ audioUrl: `/api/files/download?key=${encodeURIComponent(storageKey)}` } : {})
+        } : msg))
       }
-      setThread((prev) => [
-        ...prev,
-        {
-          id: crypto.randomUUID(),
-          sender: "HANDLER",
-          body: message.trim(),
-          createdAt: new Date().toISOString(),
-        },
-      ])
       setMessage("")
       setFiles([])
       if (fileInputRef.current) fileInputRef.current.value = ""

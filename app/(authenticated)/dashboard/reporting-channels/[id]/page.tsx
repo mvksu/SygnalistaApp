@@ -1,15 +1,22 @@
 import { auth } from "@clerk/nextjs/server"
 import { db } from "@/db"
 import { reportingChannels } from "@/db/schema/reportingChannels"
+import { reportingChannelAutoAssignments } from "@/db/schema/reportingChannels"
 import { organizations } from "@/db/schema/organizations"
 import { eq } from "drizzle-orm"
 import Link from "next/link"
-import { setChannelDefaultLanguage, deleteReportingChannelAction } from "@/actions/reporting-channels"
+import { setChannelDefaultLanguage, deleteReportingChannelAction, addAutoAssignmentMember, removeAutoAssignmentMember } from "@/actions/reporting-channels"
 import { CopyButton } from "@/components/ui/copy-button"
-import { Link as LinkIcon, ExternalLink, Image as ImageIcon } from "lucide-react"
+import { Link as LinkIcon, ExternalLink, Image as ImageIcon, Plus, X } from "lucide-react"
 import { clerkClient } from "@clerk/nextjs/server"
 import { Button } from "tweakcn/ui/button"
 import PosterDialog from "@/components/poster-dialog"
+import { orgMembers } from "@/db/schema/orgMembers"
+import { users } from "@/db/schema/users"
+import { asc } from "drizzle-orm"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export default async function ReportingChannelDetail({ params }: { params: Promise<{ id: string }> }) {
 	const { orgId: clerkOrgId } = await auth()
@@ -32,6 +39,32 @@ export default async function ReportingChannelDetail({ params }: { params: Promi
   const QR = await import("qrcode")
   const qrDataUrl = await QR.toDataURL(link, { margin: 2, width: 600 })
 
+  const members = await db
+    .select({ id: orgMembers.id, role: orgMembers.role, name: users.name, email: users.email })
+    .from(orgMembers)
+    .innerJoin(users, eq(users.id, orgMembers.userId))
+    .where(eq(orgMembers.orgId, orgId))
+    .orderBy(asc(users.name))
+
+  // Get auto-assigned members for this channel
+  const autoAssignedMembers = await db
+    .select({ 
+      id: orgMembers.id, 
+      role: orgMembers.role, 
+      name: users.name, 
+      email: users.email,
+      assignmentId: reportingChannelAutoAssignments.id
+    })
+    .from(reportingChannelAutoAssignments)
+    .innerJoin(orgMembers, eq(orgMembers.id, reportingChannelAutoAssignments.orgMemberId))
+    .innerJoin(users, eq(users.id, orgMembers.userId))
+    .where(eq(reportingChannelAutoAssignments.channelId, channel.id))
+    .orderBy(asc(users.name))
+
+  // Get available members (not yet auto-assigned)
+  const availableMembers = members.filter(member => 
+    !autoAssignedMembers.some(auto => auto.id === member.id)
+  )
 
 	return (
     <div className="space-y-6">
@@ -142,6 +175,113 @@ export default async function ReportingChannelDetail({ params }: { params: Promi
                         </form>
 						</div>
 					</div>
+          <div className="rounded border">
+            <div className="border-b p-4 font-medium">Who has access</div>
+            <div className="p-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-medium">Auto-assigned members</h3>
+                {availableMembers.length > 0 && (
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button size="sm" className="h-8 px-2">
+                        <Plus className="h-4 w-4 mr-1" />
+                        Add member
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <Dialog.Title className="text-lg font-medium">Add auto-assignment member</Dialog.Title>
+
+                      <form action={addAutoAssignmentMember} className="space-y-4">
+                        <input type="hidden" name="channelId" value={channel.id} />
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Select member</label>
+                          <Select name="orgMemberId" required>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Choose a member..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {availableMembers.map(member => (
+                                <SelectItem key={member.id} value={member.id}>
+                                  {member.name || member.email} ({member.role})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <Button type="submit" className="w-full">
+                          Add member
+                        </Button>
+                      </form>
+                    </DialogContent>
+                  </Dialog>
+                )}
+              </div>
+              
+              {autoAssignedMembers.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead className="w-20">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {autoAssignedMembers.map(member => (
+                      <TableRow key={member.id}>
+                        <TableCell>{member.name || "—"}</TableCell>
+                        <TableCell className="font-mono text-xs">{member.email}</TableCell>
+                        <TableCell>{member.role}</TableCell>
+                        <TableCell>
+                          <form action={removeAutoAssignmentMember} className="inline">
+                            <input type="hidden" name="channelId" value={channel.id} />
+                            <input type="hidden" name="orgMemberId" value={member.id} />
+                            <Button type="submit" variant="ghost" size="sm" className="h-8 w-8 p-0">
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </form>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="text-sm text-muted-foreground py-4 text-center">
+                  No auto-assigned members. New cases will be assigned to the channel creator.
+                </div>
+              )}
+              
+              <div className="border-t pt-4">
+                <h3 className="text-sm font-medium mb-3">All organization members</h3>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Creator</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {members.map(m => (
+                      <TableRow key={m.id}>
+                        <TableCell>{m.name || "—"}</TableCell>
+                        <TableCell className="font-mono text-xs">{m.email}</TableCell>
+                        <TableCell>{m.role}</TableCell>
+                        <TableCell>{channel.createdByOrgMemberId === m.id ? "Yes" : "No"}</TableCell>
+                      </TableRow>
+                    ))}
+                    {members.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-sm text-muted-foreground">No members found.</TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          </div>
 				</div>
 		</div>
     </div>

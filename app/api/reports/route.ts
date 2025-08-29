@@ -11,7 +11,7 @@ import { isAllowedMimeType, getFileSizeLimit } from "@/lib/validation/upload"
 import { generateCaseId, generateCaseKey, hashCaseKey } from "@/lib/ids"
 import { encryptField } from "@/lib/crypto/encryption"
 import { auth } from "@clerk/nextjs/server"
-import { reportingChannels } from "@/db/schema/reportingChannels"
+import { reportingChannels, reportingChannelAutoAssignments } from "@/db/schema/reportingChannels"
 import { reportAssignees } from "@/db/schema/reportAssignees"
 import { organizations } from "@/db/schema/organizations"
 import { writeAudit, getAuditFingerprint } from "@/src/server/services/audit"
@@ -31,8 +31,9 @@ export async function POST(request: NextRequest) {
     const channelSlug = request.headers.get("x-channel-slug") || url.searchParams.get("channel") || undefined
 
     let orgId: string | null = null
+    let channel: any = null
     if (channelSlug) {
-      const channel = await db.query.reportingChannels.findFirst({ where: eq(reportingChannels.slug, channelSlug) })
+      channel = await db.query.reportingChannels.findFirst({ where: eq(reportingChannels.slug, channelSlug) })
       if (channel) {
         orgId = channel.orgId
       } else {
@@ -69,7 +70,7 @@ export async function POST(request: NextRequest) {
 
     // Resolve default assignee (first ADMIN in org)
     const adminMember = await db.query.orgMembers.findFirst({ where: and(eq(orgMembers.orgId, orgId!), eq(orgMembers.role, "ADMIN" as any)) })
-    const defaultAssignee = adminMember ? adminMember.userId : null
+    const defaultAssigneeMemberId = adminMember ? adminMember.id : null
 
     // Insert report
     const [inserted] = await db
@@ -78,7 +79,7 @@ export async function POST(request: NextRequest) {
         orgId,
         categoryId,
         subject: (body as any)?.subject || null,
-        status: "OPEN",
+        status: "NEW",
         createdAt: now,
         ackDueAt: new Date(now.getTime() + (((org?.ackDays as number) ?? 7) * 24 * 60 * 60 * 1000)),
         feedbackDueAt: addMonths(now, ((org?.feedbackMonths as number) ?? 3)),
@@ -88,18 +89,48 @@ export async function POST(request: NextRequest) {
         caseKeyHash: passphraseHash,
       })
       .returning()
-    // Auto-assign: if report submitted via a channel with a recorded creator, assign them
-    if (channelSlug) {
-      const channel = await db.query.reportingChannels.findFirst({ where: eq(reportingChannels.slug, channelSlug) })
-      const creatorMemberId = (channel as any)?.createdByOrgMemberId as string | undefined
-      if (creatorMemberId) {
+
+    // Auto-assign: if report submitted via a channel
+    if (channel) {
+      // 1. First try to assign to auto-assigned members
+      const autoAssignedMembers = await db
+        .select({ orgMemberId: reportingChannelAutoAssignments.orgMemberId })
+        .from(reportingChannelAutoAssignments)
+        .where(eq(reportingChannelAutoAssignments.channelId, channel.id))
+
+      if (autoAssignedMembers.length > 0) {
+        // Assign to all auto-assigned members
+        const assignmentValues = autoAssignedMembers.map(auto => ({
+          reportId: inserted.id,
+          orgMemberId: auto.orgMemberId,
+          addedByOrgMemberId: auto.orgMemberId
+        }))
+        
         await db
           .insert(reportAssignees)
-          .values({ reportId: inserted.id, orgMemberId: creatorMemberId, addedByOrgMemberId: creatorMemberId })
+          .values(assignmentValues)
           .onConflictDoNothing()
+      } else {
+        // 2. Fallback to channel creator
+        const creatorMemberId = channel.createdByOrgMemberId
+        const assigneeMemberId = creatorMemberId || defaultAssigneeMemberId || undefined
+        if (assigneeMemberId) {
+          await db
+            .insert(reportAssignees)
+            .values({ reportId: inserted.id, orgMemberId: assigneeMemberId, addedByOrgMemberId: assigneeMemberId })
+            .onConflictDoNothing()
+        }
       }
     }
 
+    // Ensure at least one assignee (fallback to first ADMIN) for any path
+    const existingAssignee = await db.query.reportAssignees.findFirst({ where: eq(reportAssignees.reportId, inserted.id) })
+    if (!existingAssignee && defaultAssigneeMemberId) {
+      await db
+        .insert(reportAssignees)
+        .values({ reportId: inserted.id, orgMemberId: defaultAssigneeMemberId, addedByOrgMemberId: defaultAssigneeMemberId })
+        .onConflictDoNothing()
+    }
 
     // First message saved encrypted under org key
     const firstMessageEncrypted = encryptField(orgId!, messageBody)

@@ -7,7 +7,6 @@ export const surveys = pgTable("surveys", {
   title: text("title").notNull(),
   description: text("description"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-  meta: jsonb("meta"), // welcome/thankyou text and flags
 })
 
 export const surveyQuestions = pgTable("survey_questions", {
@@ -15,8 +14,6 @@ export const surveyQuestions = pgTable("survey_questions", {
   surveyId: uuid("survey_id").notNull().references(() => surveys.id, { onDelete: "cascade" }),
   idx: integer("idx").notNull(),
   question: text("question").notNull(),
-  type: text("type").default("single").notNull(), // single|multi|short|rating
-  config: jsonb("config"),
 })
 
 export const surveyOptions = pgTable("survey_options", {

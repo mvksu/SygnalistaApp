@@ -141,6 +141,13 @@
       "when": 1756425375579,
       "tag": "0019_absurd_major_mapleleaf",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1756500148965,
+      "tag": "0020_add_auto_assignments_table",
+      "breakpoints": true
     }
   ]
 }

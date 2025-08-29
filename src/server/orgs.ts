@@ -33,7 +33,7 @@ export async function getDbOrgIdForClerkOrg(
 
   // 2) Insert new (with slug generation + collision handling)
   const base = slugify(clerkOrgName || "organization")
-  const candidates = [base, `${base}-${crypto.randomUUID().slice(0, 2)}`]
+  const candidates = [base, `${base}-${randomUUID().slice(0, 2)}`]
 
   for (const candidateSlug of candidates) {
     try {

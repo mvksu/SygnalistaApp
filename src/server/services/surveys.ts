@@ -1,6 +1,6 @@
 import { db } from "@/db"
 import { surveys, surveyOptions, surveyQuestions } from "@/db/schema/surveys"
-import { eq, and } from "drizzle-orm"
+import { eq, and, sql } from "drizzle-orm"
 
 export async function createSurvey(orgId: string, input: {
   title: string
@@ -10,15 +10,21 @@ export async function createSurvey(orgId: string, input: {
   const [s] = await db.insert(surveys).values({ orgId, title: input.title, description: input.description }).returning()
   if (!s) throw new Error("Failed to create survey")
 
-  for (let qi = 0; qi < input.questions.length; qi++) {
-    const q = input.questions[qi]
-    const [sq] = await db.insert(surveyQuestions).values({ surveyId: s.id, idx: qi, question: q.text }).returning()
-    if (!sq) continue
-    for (let oi = 0; oi < q.options.length; oi++) {
-      const label = q.options[oi]
-      await db.insert(surveyOptions).values({ questionId: sq.id, idx: oi, label })
+    for (let qi = 0; qi < input.questions.length; qi++) {
+      const q = input.questions[qi]
+      const [sq] = await db
+        .insert(surveyQuestions)
+        .values({ surveyId: s.id, idx: qi, question: q.text })
+        .returning()
+      if (!sq) continue
+      const opts = Array.isArray(q.options) ? q.options : []
+      for (let oi = 0; oi < opts.length; oi++) {
+        const label = opts[oi]
+        await db
+          .insert(surveyOptions)
+          .values({ questionId: sq.id, idx: oi, label })
+      }
     }
-  }
 
   return s
 }
@@ -40,7 +46,9 @@ export async function getSurveyWithQuestions(surveyId: string) {
 
 export async function submitSurveyAnswers(surveyId: string, answers: { questionId: string; optionId: string }[]) {
   for (const a of answers) {
-    await db.update(surveyOptions).set({ count: surveyOptions.count.plus(1) }).where(and(eq(surveyOptions.id, a.optionId), eq(surveyOptions.questionId, a.questionId)))
+    await db.execute(
+      sql`UPDATE ${surveyOptions} SET "count" = "count" + 1 WHERE ${surveyOptions.id} = ${a.optionId} AND ${surveyOptions.questionId} = ${a.questionId}`
+    )
   }
 }
 

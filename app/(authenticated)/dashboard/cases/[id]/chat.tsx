@@ -21,6 +21,9 @@ type Message = {
   sender: "REPORTER" | "HANDLER" | "SYSTEM" | "BOT" | "ADMIN"
   body: string
   createdAt: string
+  avatarUrl?: string
+  attachments?: Array<{ id: string; filename: string; storageKey: string; size: number }>
+  audioUrl?: string
 }
 
 export default function Chat({
@@ -63,8 +66,33 @@ export default function Chat({
                 isUser={m.sender === "HANDLER"}
                 senderLabel={m.sender}
                 createdAt={m.createdAt}
+                avatarUrl={m.avatarUrl}
               >
-                <p>{m.body}</p>
+                <div className="space-y-2">
+                  {m.audioUrl ? (
+                    <audio controls src={m.audioUrl} className="w-full">
+                      Your browser does not support the audio element.
+                    </audio>
+                  ) : (
+                    <p>{m.body}</p>
+                  )}
+                  {!!m.attachments?.length && (
+                    <div className="mt-1 grid gap-2">
+                      {m.attachments.map(att => (
+                        <a
+                          key={att.id}
+                          href={`/api/files/download?key=${encodeURIComponent(att.storageKey)}`}
+                          className="inline-flex items-center gap-2 rounded border px-2 py-1 text-xs"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <span className="font-mono truncate max-w-[180px]">{att.filename}</span>
+                          <span className="text-muted-foreground">{Math.round(att.size / 1024)} KB</span>
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </ChatMessage>
             ))}
             <div ref={messagesEndRef} aria-hidden="true" />
