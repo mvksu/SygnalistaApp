@@ -1,11 +1,25 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
+import { Settings } from "lucide-react"
 
 export const OptionsPanel = () => {
   return (
     <div className="mb-6 flex justify-end">
       <div className="flex gap-2">
+        <Button
+          type="button"
+          className="px-3 py-2 text-sm"
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            // Navigate to settings page with SLA section focused
+            window.open("/dashboard/settings#sla", "_blank")
+          }}
+        >
+          <Settings className="mr-2 h-4 w-4" />
+          SLA Settings
+        </Button>
         <Button
           type="button"
           className="px-3 py-2 text-sm"

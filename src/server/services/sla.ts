@@ -10,6 +10,12 @@ import { sendAcknowledgeEmail, sendFeedbackEmail } from "@/src/server/notify/mai
 export async function computeAndMarkSla(orgId: string) {
   const now = new Date()
   const org = await db.query.organizations.findFirst({ where: eq(organizations.id, orgId) })
+  
+  // Check if SLA is enabled for this organization
+  if (!(org?.slaEnabled as boolean ?? true)) {
+    return { inserted: 0, slaDisabled: true }
+  }
+  
   const ackDays = (org?.ackDays as number) ?? 7
   // Ack due: 7 days after createdAt when not acknowledged
   const ackCandidates = await db

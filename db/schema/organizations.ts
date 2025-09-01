@@ -19,6 +19,7 @@ export const organizations = pgTable("organizations", {
   retentionDays: integer("retention_days").default(365).notNull(),
   ackDays: integer("ack_days").default(7).notNull(),
   feedbackMonths: integer("feedback_months").default(3).notNull(),
+  slaEnabled: boolean("sla_enabled").default(true).notNull(),
   locale: text("locale").default("pl-PL").notNull(),
   logoUrl: text("logo_url"),
   anonymousAllowed: boolean("anonymous_allowed").default(true).notNull(),

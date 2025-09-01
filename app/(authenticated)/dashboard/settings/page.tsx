@@ -39,8 +39,9 @@ export default async function SettingsPage() {
           const anonymousAllowed = !!formData.get("anonymousAllowed")
           const ackDays = Number(formData.get("ackDays") || 7)
           const feedbackMonths = Number(formData.get("feedbackMonths") || 3)
+          const slaEnabled = !!formData.get("slaEnabled")
           const { orgMemberId } = await getCurrentActorOrgMemberId()
-          await updateOrgSettings(orgId, { name, locale, retentionDays: retention, anonymousAllowed, ackDays, feedbackMonths, actorId: orgMemberId, ipHash, uaHash })
+          await updateOrgSettings(orgId, { name, locale, retentionDays: retention, anonymousAllowed, ackDays, feedbackMonths, slaEnabled, actorId: orgMemberId, ipHash, uaHash })
         }} className="rounded border p-4 grid gap-3 text-sm">
           <div className="grid gap-1">
             <label className="text-muted-foreground">Name</label>
@@ -68,6 +69,10 @@ export default async function SettingsPage() {
           <div className="flex items-center gap-2">
             <input id="anonymousAllowed" type="checkbox" name="anonymousAllowed" defaultChecked={org?.anonymousAllowed ?? true} className="rounded border" />
             <label htmlFor="anonymousAllowed" className="text-sm">Allow anonymous reports</label>
+          </div>
+          <div className="flex items-center gap-2">
+            <input id="slaEnabled" type="checkbox" name="slaEnabled" defaultChecked={(org as unknown as { slaEnabled?: boolean })?.slaEnabled ?? true} className="rounded border" />
+            <label htmlFor="slaEnabled" className="text-sm">Enable SLA tracking</label>
           </div>
           <div>
             <Button type="submit" className="px-3 py-2 text-sm" variant="primary" size="sm">

@@ -21,6 +21,15 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     if (!rpt) return NextResponse.json({ error: "not_found" }, { status: 404 })
 
     const org = await db.query.organizations.findFirst({ where: eq(organizations.id, orgId) })
+    
+    // Check if SLA is enabled for this organization
+    if (!(org?.slaEnabled as boolean ?? true)) {
+      return NextResponse.json({
+        slaDisabled: true,
+        message: "SLA tracking is disabled for this organization"
+      })
+    }
+    
     const ackDays = (org?.ackDays as number) ?? 7
     const now = new Date()
 

@@ -9,7 +9,7 @@ export async function getOrgSettings(orgId: string) {
   return org
 }
 
-export async function updateOrgSettings(orgId: string, input: { name?: string; locale?: string; retentionDays?: number; anonymousAllowed?: boolean; ackDays?: number; feedbackMonths?: number; actorId?: string | null; ipHash?: string | null; uaHash?: string | null }) {
+export async function updateOrgSettings(orgId: string, input: { name?: string; locale?: string; retentionDays?: number; anonymousAllowed?: boolean; ackDays?: number; feedbackMonths?: number; slaEnabled?: boolean; actorId?: string | null; ipHash?: string | null; uaHash?: string | null }) {
   await db.update(organizations).set({
     name: input.name,
     locale: input.locale,
@@ -17,6 +17,7 @@ export async function updateOrgSettings(orgId: string, input: { name?: string; l
     anonymousAllowed: input.anonymousAllowed,
     ackDays: input.ackDays as any,
     feedbackMonths: input.feedbackMonths as any,
+    slaEnabled: input.slaEnabled,
   }).where(eq(organizations.id, orgId))
   await writeAudit({ orgId, actorId: input.actorId || null, action: "ORG_SETTINGS_UPDATED", targetType: "organization", targetId: orgId, ipHash: input.ipHash || null, uaHash: input.uaHash || null })
 }
