@@ -108,6 +108,7 @@ export default async function CaseViewPage({
   const CaseTabs = (await import("./case-tabs")).default
   const InternalNotes = (await import("./internal-notes")).default
   const SlaPanel = (await import("./sla-panel")).default
+  const AccessPanel = (await import("./access-panel")).default
 
   const logs = await db
     .select({
@@ -213,6 +214,15 @@ export default async function CaseViewPage({
               <SlaPanel reportId={String(report.id)} />
             </CardContent>
           </Card>
+          <Card>
+            <CardHeader className="p-4">
+              <CardTitle className="text-base">Who has access</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 pt-0">
+              <AccessPanel reportId={String(report.id)} />
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader className="p-4">
               <CardTitle className="text-base">Internal comments</CardTitle>

@@ -51,7 +51,6 @@ export async function addHandlerMessage(options: { orgId: string; reportId: stri
     .insert(reportMessages)
     .values({ reportId: options.reportId, sender: "HANDLER" as any, bodyEncrypted: JSON.stringify(payload) })
     .returning()
-  await writeAudit({ orgId: options.orgId, actorId: options.actorId || null, action: "REPORT_MESSAGE_ADDED", targetType: "report", targetId: options.reportId })
   return msg
 }
 

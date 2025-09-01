@@ -7,6 +7,11 @@ import { organizations } from "@/db/schema/organizations"
 import { reportingChannels } from "@/db/schema/reportingChannels"
 import { eq } from "drizzle-orm"
 import { attachments } from "@/db/schema/attachments"
+import {
+  writeAudit,
+  getAuditFingerprint,
+  getCurrentActorOrgMemberId
+} from "@/src/server/services/audit"
 
 export async function POST(request: NextRequest) {
   try {
@@ -74,6 +79,24 @@ export async function POST(request: NextRequest) {
         size,
         contentHash: checksum || "", // Use empty string if checksum not provided
       })
+      
+      // Audit: ATTACHMENT_ADDED with actor + fingerprint
+      try {
+        const [{ ipHash, uaHash }, { orgMemberId }] = await Promise.all([
+          getAuditFingerprint(request),
+          getCurrentActorOrgMemberId()
+        ])
+        await writeAudit({
+          orgId: resolvedOrgId!,
+          actorId: orgMemberId,
+          action: "ATTACHMENT_ADDED",
+          targetType: "report",
+          targetId: reportId,
+          ipHash,
+          uaHash,
+          metadata: { filename, size, messageId }
+        })
+      } catch {}
     }
 
     // Return the signed upload details (Supabase)
