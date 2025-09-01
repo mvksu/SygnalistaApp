@@ -60,7 +60,7 @@ export function Footer() {
               Signalista
             </Link>
             <p className="text-muted-foreground text-sm leading-6">
-              Leading the way in digital communication.
+              Compliant whistleblowing made simple.
             </p>
             <div className="flex space-x-6">
               {socialLinks.map(item => (

@@ -28,7 +28,7 @@ export function VideoSection() {
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: 0.1 }}
           >
-            Watch how quickly you can go from clone to deployed app
+            See a report move from submission to resolution
           </motion.p>
         </div>
 
@@ -57,16 +57,14 @@ export function VideoSection() {
                 transition={{ duration: 0.3 }}
               >
                 <pre className="overflow-hidden">
-                  <code>{`$ git clone github.com/mckaywrigley/template
-$ cd template
-$ npm install
-$ cp .env.example .env.local
-$ npm run dev
-
-✓ Ready in 3s
-○ Compiling / ...
-✓ Compiled successfully
-✓ Ready at http://localhost:3000`}</code>
+                  <code>{`$ report submit
+✓ encrypted & logged
+$ team acknowledge
+✓ within 7 days
+$ team feedback
+✓ within 3 months
+$ export audit
+✓ ready for inspectors`}</code>
                 </pre>
               </motion.div>
             </div>
@@ -92,9 +90,9 @@ $ npm run dev
             <div className="from-foreground absolute right-0 bottom-0 left-0 bg-gradient-to-t to-transparent p-6">
               <div className="text-background flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg font-semibold">Quick Start Demo</h3>
+                  <h3 className="text-lg font-semibold">Case Lifecycle Demo</h3>
                   <p className="text-background/80 mt-1 text-sm">
-                    From clone to deploy in minutes
+                    From report to resolution
                   </p>
                 </div>
                 <div className="flex gap-4 text-sm">
@@ -120,14 +118,14 @@ $ npm run dev
             transition={{ duration: 0.5, delay: 0.4 }}
           >
             {[
-              "TypeScript",
-              "Next.js 15",
-              "Tailwind CSS",
-              "Clerk Auth",
-              "Stripe"
-            ].map((tech, index) => (
+              "Anonymous intake",
+              "End-to-end encryption",
+              "SLA reminders",
+              "Register & audit log",
+              "1-click exports"
+            ].map((feature, index) => (
               <motion.span
-                key={tech}
+                key={feature}
                 className="bg-muted text-muted-foreground inline-flex items-center rounded-full px-4 py-2 text-sm font-medium"
                 initial={{ opacity: 0, scale: 0.8 }}
                 whileInView={{ opacity: 1, scale: 1 }}
@@ -139,7 +137,7 @@ $ npm run dev
                   stiffness: 200
                 }}
               >
-                {tech}
+                {feature}
               </motion.span>
             ))}
           </motion.div>

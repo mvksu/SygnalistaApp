@@ -6,24 +6,24 @@ import { SectionWrapper } from "./section-wrapper"
 
 const testimonials = [
   {
-    name: "Alex Chen",
-    role: "Indie Hacker",
+    name: "Katarzyna Nowak",
+    role: "HR Manager",
     content:
-      "This template saved me weeks of setup time. I went from idea to deployed MVP in just 2 days. The authentication and payment integration alone would have taken me a week to configure properly.",
+      "Sygnalista gave our employees a safe place to speak up. We uncovered issues early and built more trust in the process.",
     rating: 5
   },
   {
-    name: "Sarah Williams",
-    role: "Startup Founder",
+    name: "Piotr Zieliński",
+    role: "Compliance Officer",
     content:
-      "As a non-technical founder, this template was a godsend. Clean code, great documentation, and everything just works out of the box. My developer was impressed with the code quality.",
+      "The automatic SLA reminders keep our team on track and auditors love the register exports.",
     rating: 5
   },
   {
-    name: "Mike Johnson",
-    role: "Full Stack Developer",
+    name: "Anna Kowalska",
+    role: "Legal Counsel",
     content:
-      "I've tried many boilerplates, but this one hits different. Modern stack, best practices, and actually production-ready. It's now my go-to starting point for all client projects.",
+      "Monthly snapshots and the tamper‑evident log make proving diligence effortless during reviews.",
     rating: 5
   }
 ]
@@ -49,7 +49,7 @@ export function SocialProofSection() {
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: 0.1 }}
           >
-            Loved by developers worldwide
+            Trusted by compliance teams
           </motion.p>
         </div>
         <div className="mx-auto mt-16 flow-root max-w-2xl sm:mt-20 lg:mx-0 lg:max-w-none">
