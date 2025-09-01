@@ -106,7 +106,9 @@ export const schema = z.object({
   feedbackDueAt: z.union([z.string(), z.date()]).nullable(),
   ackDueAt: z.union([z.string(), z.date()]),
   ackStatus: z.enum(["due", "overdue", "done"]),
-  feedbackStatus: z.enum(["due", "overdue", "done"])
+  feedbackStatus: z.enum(["due", "overdue", "done"]),
+  lastActivity: z.union([z.string(), z.date()]),
+  lastActivityType: z.string().nullable()
 })
 
 export type DataTableRow = z.infer<typeof schema>
@@ -162,6 +164,27 @@ function chip(state: "due" | "overdue" | "done", dueAt?: unknown) {
       {remain ? ` • ${remain}` : ""}
     </span>
   )
+}
+
+function getActivityLabel(activityType: string): string {
+  switch (activityType) {
+    case "status_changed":
+      return "Status changed"
+    case "assignment_added":
+      return "Assigned"
+    case "assignment_removed":
+      return "Unassigned"
+    case "comment":
+      return "Comment added"
+    case "internal_comment":
+      return "Internal note"
+    case "created":
+      return "Created"
+    case "updated":
+      return "Updated"
+    default:
+      return activityType.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase())
+  }
 }
 
 const columns: ColumnDef<z.infer<typeof schema>>[] = [
@@ -269,7 +292,45 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
   {
     id: "lastUpdate",
     header: "Last update",
-    cell: () => "—"
+    cell: ({ row }) => {
+      const lastActivity = row.original.lastActivity
+      const lastActivityType = row.original.lastActivityType
+      
+      if (!lastActivity) return "—"
+      
+      const date = lastActivity instanceof Date ? lastActivity : new Date(String(lastActivity))
+      if (isNaN(date.getTime())) return "—"
+      
+      const now = new Date()
+      const diffMs = now.getTime() - date.getTime()
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+      
+      let timeAgo = ""
+      if (diffDays === 0) {
+        const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+        if (diffHours === 0) {
+          const diffMinutes = Math.floor(diffMs / (1000 * 60))
+          timeAgo = diffMinutes <= 1 ? "just now" : `${diffMinutes}m ago`
+        } else {
+          timeAgo = `${diffHours}h ago`
+        }
+      } else if (diffDays === 1) {
+        timeAgo = "yesterday"
+      } else if (diffDays < 7) {
+        timeAgo = `${diffDays}d ago`
+      } else {
+        timeAgo = date.toLocaleDateString()
+      }
+      
+      const activityLabel = lastActivityType ? getActivityLabel(lastActivityType) : ""
+      
+      return (
+        <div className="text-xs">
+          <div className="font-medium">{timeAgo}</div>
+          {activityLabel && <div className="text-muted-foreground">{activityLabel}</div>}
+        </div>
+      )
+    }
   },
   {
     id: "ackChip",

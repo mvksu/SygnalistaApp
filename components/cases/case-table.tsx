@@ -23,6 +23,8 @@ type CaseRow = {
   ackDueAt: string | Date
   ackStatus: "due" | "overdue" | "done"
   feedbackStatus: "due" | "overdue" | "done"
+  lastActivity?: string | Date
+  lastActivityType?: string | null
 }
 
 export function CaseTable({ rows }: { rows: CaseRow[]  }) {
@@ -44,6 +46,27 @@ export function CaseTable({ rows }: { rows: CaseRow[]  }) {
       return `${Math.abs(days)}d late`
     })()
     return <span className={`px-2 py-1 rounded text-xs ${map[state]}`}>{state}{remain ? ` • ${remain}` : ""}</span>
+  }
+
+  const getActivityLabel = (activityType: string): string => {
+    switch (activityType) {
+      case "status_changed":
+        return "Status changed"
+      case "assignment_added":
+        return "Assigned"
+      case "assignment_removed":
+        return "Unassigned"
+      case "comment":
+        return "Comment added"
+      case "internal_comment":
+        return "Internal note"
+      case "created":
+        return "Created"
+      case "updated":
+        return "Updated"
+      default:
+        return activityType.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase())
+    }
   }
 
   return (
@@ -85,7 +108,20 @@ export function CaseTable({ rows }: { rows: CaseRow[]  }) {
                 )}
               </td>
               <td className="p-2">{format(r.createdAt)}</td>
-              <td className="p-2">{"-"}</td>
+              <td className="p-2">
+                {r.lastActivity ? (
+                  <div className="text-xs">
+                    <div className="font-medium">{format(r.lastActivity)}</div>
+                    {r.lastActivityType && (
+                      <div className="text-muted-foreground">
+                        {getActivityLabel(r.lastActivityType)}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  "—"
+                )}
+              </td>
               <td className="p-2">{format(r.ackDueAt)}</td>
               <td className="p-2">
                 <Tooltip>

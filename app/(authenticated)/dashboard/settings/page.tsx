@@ -3,9 +3,10 @@ import { db } from "@/db"
 import { reportCategories } from "@/db/schema/reportCategories"
 import { organizations } from "@/db/schema/organizations"
 import { eq } from "drizzle-orm"
-import { updateOrgSettings, addCategory, setCategoryActive } from "@/src/server/services/settings"
+import { addCategory, setCategoryActive } from "@/src/server/services/settings"
 import { getAuditFingerprint, getCurrentActorOrgMemberId } from "@/src/server/services/audit"
 import { Button } from "tweakcn/ui/button"
+import { SettingsForm } from "./settings-form"
 
 export default async function SettingsPage() {
   const { orgId: clerkOrgId } = await auth()
@@ -21,65 +22,7 @@ export default async function SettingsPage() {
       <h1 className="text-2xl font-semibold">Settings</h1>
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">Organization</h2>
-        <form action={async (formData: FormData) => {
-          "use server"
-          const req = (global as unknown as { request?: Request } | undefined)?.request
-          let ipHash: string | null = null
-          let uaHash: string | null = null
-          try {
-            if (req) {
-              const fp = await getAuditFingerprint(req)
-              ipHash = fp.ipHash
-              uaHash = fp.uaHash
-            }
-          } catch {}
-          const name = String(formData.get("name") || "").trim()
-          const locale = String(formData.get("locale") || "pl-PL")
-          const retention = Number(formData.get("retentionDays") || 365)
-          const anonymousAllowed = !!formData.get("anonymousAllowed")
-          const ackDays = Number(formData.get("ackDays") || 7)
-          const feedbackMonths = Number(formData.get("feedbackMonths") || 3)
-          const slaEnabled = !!formData.get("slaEnabled")
-          const { orgMemberId } = await getCurrentActorOrgMemberId()
-          await updateOrgSettings(orgId, { name, locale, retentionDays: retention, anonymousAllowed, ackDays, feedbackMonths, slaEnabled, actorId: orgMemberId, ipHash, uaHash })
-        }} className="rounded border p-4 grid gap-3 text-sm">
-          <div className="grid gap-1">
-            <label className="text-muted-foreground">Name</label>
-            <input name="name" defaultValue={org?.name || ""} className="rounded border px-2 py-1" />
-          </div>
-          <div className="grid gap-1">
-            <label className="text-muted-foreground">Default language</label>
-            <select name="locale" defaultValue={String(org?.locale || "pl-PL")} className="rounded border px-2 py-1 max-w-xs">
-              <option value="en-US">English</option>
-              <option value="pl-PL">Polski</option>
-            </select>
-          </div>
-          <div className="grid gap-1 max-w-xs">
-            <label className="text-muted-foreground">Retention (days)</label>
-            <input type="number" name="retentionDays" defaultValue={org?.retentionDays || 365} className="rounded border px-2 py-1" />
-          </div>
-          <div className="grid gap-1 max-w-xs">
-            <label className="text-muted-foreground">Acknowledge window (days)</label>
-            <input type="number" name="ackDays" defaultValue={(org as unknown as { ackDays?: number })?.ackDays ?? 7} className="rounded border px-2 py-1" />
-          </div>
-          <div className="grid gap-1 max-w-xs">
-            <label className="text-muted-foreground">Feedback window (months)</label>
-            <input type="number" name="feedbackMonths" defaultValue={(org as unknown as { feedbackMonths?: number })?.feedbackMonths ?? 3} className="rounded border px-2 py-1" />
-          </div>
-          <div className="flex items-center gap-2">
-            <input id="anonymousAllowed" type="checkbox" name="anonymousAllowed" defaultChecked={org?.anonymousAllowed ?? true} className="rounded border" />
-            <label htmlFor="anonymousAllowed" className="text-sm">Allow anonymous reports</label>
-          </div>
-          <div className="flex items-center gap-2">
-            <input id="slaEnabled" type="checkbox" name="slaEnabled" defaultChecked={(org as unknown as { slaEnabled?: boolean })?.slaEnabled ?? true} className="rounded border" />
-            <label htmlFor="slaEnabled" className="text-sm">Enable SLA tracking</label>
-          </div>
-          <div>
-            <Button type="submit" className="px-3 py-2 text-sm" variant="primary" size="sm">
-              Save
-            </Button>
-          </div>
-        </form>
+        <SettingsForm org={org || {}} />
       </section>
 
       <section className="space-y-3">

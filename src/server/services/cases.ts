@@ -4,7 +4,8 @@ import { reportCategories } from "@/db/schema/reportCategories"
 import { reportAssignees } from "@/db/schema/reportAssignees"
 import { orgMembers } from "@/db/schema/orgMembers"
 import { users } from "@/db/schema/users"
-import { and, eq, ilike, inArray, gte, lte, SQL } from "drizzle-orm"
+import { reportLogs } from "@/db/schema/reportLogs"
+import { and, eq, ilike, inArray, gte, lte, SQL, desc } from "drizzle-orm"
 import { organizations } from "@/db/schema/organizations"
 
 export type CaseListItem = {
@@ -22,6 +23,7 @@ export type CaseListItem = {
   severity: string
   nextDeadline: Date | null
   lastActivity: Date
+  lastActivityType: string | null
   assignees: { id: string; name: string }[]
 }
 
@@ -124,7 +126,18 @@ export async function listCases(
     .leftJoin(users, eq(users.id, orgMembers.userId))
     .where(inArray(reportAssignees.reportId, reportIds))
 
-  // 3) Index assignees by reportId
+  // 3) Fetch last activity for all reports
+  const lastActivityRows = await db
+    .select({
+      reportId: reportLogs.reportId,
+      lastActivity: reportLogs.createdAt,
+      lastActivityType: reportLogs.type
+    })
+    .from(reportLogs)
+    .where(inArray(reportLogs.reportId, reportIds))
+    .orderBy(desc(reportLogs.createdAt))
+
+  // 4) Index assignees by reportId
   const idToAssignees = new Map<string, { id: string; name: string }[]>()
   for (const a of assigneeRows) {
     if (!a.reportId || !a.userId) continue
@@ -133,7 +146,18 @@ export async function listCases(
     idToAssignees.set(a.reportId, arr)
   }
 
-  // 4) Map to CaseListItem with computed statuses + assignees
+  // 5) Index last activity by reportId
+  const idToLastActivity = new Map<string, { lastActivity: Date; lastActivityType: string }>()
+  for (const activity of lastActivityRows) {
+    if (!idToLastActivity.has(activity.reportId)) {
+      idToLastActivity.set(activity.reportId, {
+        lastActivity: activity.lastActivity as Date,
+        lastActivityType: activity.lastActivityType
+      })
+    }
+  }
+
+  // 6) Map to CaseListItem with computed statuses + assignees
   return rows.map(r => {
     const { ackDueAt, ackStatus, feedbackStatus } = computeStatuses({
       createdAt: r.createdAt,
@@ -142,6 +166,7 @@ export async function listCases(
       status: r.status
     }, ackDays)
     const nextDeadline = r.acknowledgedAt ? (r.feedbackDueAt ?? null) : ackDueAt
+    const lastActivityData = idToLastActivity.get(r.id)
     return {
       id: r.id,
       caseId: r.caseId,
@@ -156,7 +181,8 @@ export async function listCases(
       feedbackStatus,
       severity: "—",
       nextDeadline,
-      lastActivity: r.createdAt as Date,
+      lastActivity: lastActivityData?.lastActivity || r.createdAt as Date,
+      lastActivityType: lastActivityData?.lastActivityType || null,
       assignees: idToAssignees.get(r.id) || [] // ← attach nested assignees
     }
   })
@@ -176,6 +202,8 @@ export type CaseTableRow = {
   ackDueAt: Date
   ackStatus: "due" | "overdue" | "done"
   feedbackStatus: "due" | "overdue" | "done"
+  lastActivity: Date
+  lastActivityType: string | null
 }
 
 export async function listAssignedCaseRows(orgId: string, orgMemberId: string): Promise<CaseTableRow[]> {
@@ -216,6 +244,27 @@ export async function listAssignedCaseRows(orgId: string, orgMemberId: string): 
     idToAssignees.set(a.reportId, arr)
   }
 
+  // Fetch last activity for assigned reports
+  const lastActivityRows = await db
+    .select({
+      reportId: reportLogs.reportId,
+      lastActivity: reportLogs.createdAt,
+      lastActivityType: reportLogs.type
+    })
+    .from(reportLogs)
+    .where(inArray(reportLogs.reportId, reportIds))
+    .orderBy(desc(reportLogs.createdAt))
+
+  const idToLastActivity = new Map<string, { lastActivity: Date; lastActivityType: string }>()
+  for (const activity of lastActivityRows) {
+    if (!idToLastActivity.has(activity.reportId)) {
+      idToLastActivity.set(activity.reportId, {
+        lastActivity: activity.lastActivity as Date,
+        lastActivityType: activity.lastActivityType
+      })
+    }
+  }
+
   return base.map(b => {
     const { ackDueAt, ackStatus, feedbackStatus } = computeStatuses({
       createdAt: b.createdAt as Date,
@@ -223,6 +272,7 @@ export async function listAssignedCaseRows(orgId: string, orgMemberId: string): 
       feedbackDueAt: (b.feedbackDueAt as Date | null) ?? null,
       status: b.status as string,
     }, ackDays)
+    const lastActivityData = idToLastActivity.get(b.id)
     return {
       id: b.id as string,
       caseId: b.caseId as string,
@@ -236,6 +286,8 @@ export async function listAssignedCaseRows(orgId: string, orgMemberId: string): 
       ackDueAt,
       ackStatus,
       feedbackStatus,
+      lastActivity: lastActivityData?.lastActivity || b.createdAt as Date,
+      lastActivityType: lastActivityData?.lastActivityType || null
     }
   })
 }

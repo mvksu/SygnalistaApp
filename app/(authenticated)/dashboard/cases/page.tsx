@@ -64,7 +64,9 @@ export default async function CasesPage({
     feedbackDueAt: r.feedbackDueAt,
     ackDueAt: r.ackDueAt,
     ackStatus: r.ackStatus,
-    feedbackStatus: r.feedbackStatus
+    feedbackStatus: r.feedbackStatus,
+    lastActivity: r.lastActivity,
+    lastActivityType: r.lastActivityType
   }))
 
   const summary = await getCaseSummary(orgId)
