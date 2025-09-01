@@ -12,34 +12,29 @@ import { SectionWrapper } from "./section-wrapper"
 
 const faqs = [
   {
-    question: "What's included in the template?",
+    question: "Is reporting anonymous by default?",
     answer:
-      "Everything you need to build a production app: Next.js 15 with App Router, TypeScript, Tailwind CSS v4, shadcn/ui components, Clerk authentication, Stripe payments, PostgreSQL with Drizzle ORM, and PostHog analytics. All pre-configured and ready to use."
+      "Yes. Reporters can submit without logging in and access replies with a receipt and passphrase."
   },
   {
-    question: "How do I get started?",
+    question: "Does Sygnalista meet EU and Polish regulations?",
     answer:
-      "Simply clone the repository from GitHub, copy the .env.example to .env.local, add your API keys, run npm install, and you're ready to go. The whole process takes less than 5 minutes."
+      "The platform follows EU Directive 2019/1937 and the Polish Whistleblower Act—deadlines, encryption and audit trail included."
   },
   {
-    question: "Is this really free?",
+    question: "Can we customize categories and retention?",
     answer:
-      "Yes! This template is 100% free and open source under the MIT license. You can use it for personal projects, commercial applications, or anything else. No hidden costs or premium features."
+      "Admins can configure reporting categories, data retention and whether anonymous reports are allowed."
   },
   {
-    question: "Can I customize everything?",
+    question: "How are deadlines tracked?",
     answer:
-      "Absolutely! You have full access to all the source code. Modify the components, change the styling, add or remove features - it's your codebase now. The template is designed to be a starting point that you can build upon."
+      "Each case tracks the 7‑day acknowledgement and 3‑month feedback timers with automatic reminders."
   },
   {
-    question: "What about deployment?",
+    question: "How do we export data for auditors?",
     answer:
-      "The template works with any hosting provider that supports Next.js. Deploy to Vercel, Netlify, Railway, or any other platform. Database can be hosted on Supabase, Neon, or any PostgreSQL provider."
-  },
-  {
-    question: "How do I get help if I'm stuck?",
-    answer:
-      "Open an issue on GitHub for bugs or feature requests. For general questions, the community is active in discussions. If you need dedicated support, consider becoming a sponsor or reaching out for custom development."
+      "Generate a tamper‑evident register or case archive anytime. Monthly snapshots are stored automatically."
   }
 ]
 
@@ -74,8 +69,8 @@ export function FAQSection() {
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: 0.1 }}
           >
-            Everything you need to know about the template. Can't find what
-            you're looking for? Open an issue on GitHub.
+            Everything you need to know about Sygnalista. Can't find what
+            you're looking for? Contact us.
           </motion.p>
           <dl className="mt-10 space-y-6">
             {faqs.map((faq, index) => (
