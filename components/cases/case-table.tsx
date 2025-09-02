@@ -2,11 +2,17 @@
 
 import { useMemo } from "react"
 import Link from "next/link"
-import { Avatar } from "../ui/avatar"
 import { Button } from "../ui/button"
+import Assignees from "../assignees"
 import { CaseListItem } from "@/src/server/services/cases"
 import { useEffect, useState } from "react"
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "../ui/sheet"
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger
+} from "../ui/sheet"
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip"
 import { UserPlus } from "lucide-react"
 
@@ -27,14 +33,18 @@ type CaseRow = {
   lastActivityType?: string | null
 }
 
-export function CaseTable({ rows }: { rows: CaseRow[]  }) {
-  const format = useMemo(() => (d?: string | Date | null) => (d ? new Date(d).toLocaleDateString() : "—"), [])
+export function CaseTable({ rows }: { rows: CaseRow[] }) {
+  const format = useMemo(
+    () => (d?: string | Date | null) =>
+      d ? new Date(d).toLocaleDateString() : "—",
+    []
+  )
 
   const chip = (state: "due" | "overdue" | "done", dueAt?: string | Date) => {
     const map = {
       due: "bg-amber-100 text-amber-900",
       overdue: "bg-red-100 text-red-900",
-      done: "bg-emerald-100 text-emerald-900",
+      done: "bg-emerald-100 text-emerald-900"
     }
     const remain = (() => {
       if (!dueAt) return ""
@@ -45,7 +55,12 @@ export function CaseTable({ rows }: { rows: CaseRow[]  }) {
       if (days >= 0) return `${days}d`
       return `${Math.abs(days)}d late`
     })()
-    return <span className={`px-2 py-1 rounded text-xs ${map[state]}`}>{state}{remain ? ` • ${remain}` : ""}</span>
+    return (
+      <span className={`rounded px-2 py-1 text-xs ${map[state]}`}>
+        {state}
+        {remain ? ` • ${remain}` : ""}
+      </span>
+    )
   }
 
   const getActivityLabel = (activityType: string): string => {
@@ -65,47 +80,62 @@ export function CaseTable({ rows }: { rows: CaseRow[]  }) {
       case "updated":
         return "Updated"
       default:
-        return activityType.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase())
+        return activityType
+          .replace(/_/g, " ")
+          .replace(/\b\w/g, l => l.toUpperCase())
     }
   }
 
   return (
-    <div className="overflow-x-auto border rounded-md">
+    <div className="overflow-x-auto rounded-md border">
       <table className="w-full text-sm">
         <thead className="bg-muted">
           <tr>
-            <th className="text-left p-2">Case ID</th>
-            <th className="text-left p-2">Subject</th>
-            <th className="text-left p-2">Category</th>
-            <th className="text-left p-2">Assignees</th>
-            <th className="text-left p-2">Created</th>
-            <th className="text-left p-2">Last update</th>
-            <th className="text-left p-2">Ack due</th>
-            <th className="text-left p-2">Ack</th>
-            <th className="text-left p-2">Feedback</th>
-            <th className="text-left p-2">Status</th>
+            <th className="p-2 text-left">Case ID</th>
+            <th className="p-2 text-left">Subject</th>
+            <th className="p-2 text-left">Category</th>
+            <th className="p-2 text-left">Assignees</th>
+            <th className="p-2 text-left">Created</th>
+            <th className="p-2 text-left">Last update</th>
+            <th className="p-2 text-left">Ack due</th>
+            <th className="p-2 text-left">Ack</th>
+            <th className="p-2 text-left">Feedback</th>
+            <th className="p-2 text-left">Status</th>
           </tr>
         </thead>
         <tbody>
-          {rows.map((r) => (
-            <tr key={r.id} className={`border-t hover:bg-muted/30 ${!r.acknowledgedAt ? "font-semibold" : "font-normal"}`}>
+          {rows.map(r => (
+            <tr
+              key={r.id}
+              className={`hover:bg-muted/30 border-t ${!r.acknowledgedAt ? "font-semibold" : "font-normal"}`}
+            >
               <td className="p-2 font-mono">
-                <Link href={`/dashboard/cases/${r.id}`} className="text-primary hover:underline">
+                <Link
+                  href={`/dashboard/cases/${r.id}`}
+                  className="text-primary hover:underline"
+                >
                   {r.caseId}
                 </Link>
               </td>
-              <td className="p-2 max-w-[240px] truncate" title={r.subject || "—"}>{r.subject || "—"}</td>
+              <td
+                className="max-w-[240px] truncate p-2"
+                title={r.subject || "—"}
+              >
+                {r.subject || "—"}
+              </td>
               <td className="p-2">{r.category}</td>
-              <td className="p-2 relative">
-                {r.assignees.length > 0 ? (
-                  r.assignees.map(a => (
-                    <Avatar key={a.id} className="w-4 h-4 text-xs bg-blue-100 inline-flex mr-1">
-                      {a.name ? a.name.charAt(0) + a.name.charAt(a.name.length - 1) : "?"}
-                    </Avatar>
-                  ))
-                ) : (
-                  <AssignPopover reportId={r.id} />
-                )}
+              <td className="relative p-2">
+                <Assignees assignees={r.assignees}>
+                  <AssignPopover reportId={r.id}>
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      className="bg-secondary text-muted-foreground ring-background hover:bg-secondary hover:text-foreground flex size-10 items-center justify-center rounded-full text-xs ring-2"
+                    >
+                      <UserPlus className="h-4 w-4" />
+                    </Button>
+                  </AssignPopover>
+                </Assignees>
               </td>
               <td className="p-2">{format(r.createdAt)}</td>
               <td className="p-2">
@@ -134,7 +164,9 @@ export function CaseTable({ rows }: { rows: CaseRow[]  }) {
               <td className="p-2">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <span>{chip(r.feedbackStatus, r.feedbackDueAt || undefined)}</span>
+                    <span>
+                      {chip(r.feedbackStatus, r.feedbackDueAt || undefined)}
+                    </span>
                   </TooltipTrigger>
                   <TooltipContent>Feedback deadline</TooltipContent>
                 </Tooltip>
@@ -148,11 +180,19 @@ export function CaseTable({ rows }: { rows: CaseRow[]  }) {
   )
 }
 
-function AssignPopover({ reportId }: { reportId: string }) {
+function AssignPopover({
+  reportId,
+  children
+}: {
+  reportId: string
+  children: React.ReactNode
+}) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [query, setQuery] = useState("")
-  const [members, setMembers] = useState<Array<{ orgMemberId: string; name: string; email: string }>>([])
+  const [members, setMembers] = useState<
+    Array<{ orgMemberId: string; name: string; email: string }>
+  >([])
   const [selected, setSelected] = useState<string[]>([])
 
   useEffect(() => {
@@ -168,11 +208,15 @@ function AssignPopover({ reportId }: { reportId: string }) {
   const filtered = members.filter(m => {
     const q = query.trim().toLowerCase()
     if (!q) return true
-    return m.name?.toLowerCase().includes(q) || m.email?.toLowerCase().includes(q)
+    return (
+      m.name?.toLowerCase().includes(q) || m.email?.toLowerCase().includes(q)
+    )
   })
 
   const toggle = (id: string) => {
-    setSelected(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]))
+    setSelected(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    )
   }
 
   const confirm = async () => {
@@ -182,7 +226,7 @@ function AssignPopover({ reportId }: { reportId: string }) {
       const res = await fetch(`/api/reports/${reportId}/assignees`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ add: selected }),
+        body: JSON.stringify({ add: selected })
       })
       if (!res.ok) throw new Error("Failed to assign")
       // simple refresh
@@ -195,44 +239,59 @@ function AssignPopover({ reportId }: { reportId: string }) {
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>
-        <Button variant="ghost" className="h-7 w-7 rounded-full p-0" aria-label="Assign">
-          <UserPlus className="h-4 w-4" />
-        </Button>
-      </SheetTrigger>
+      <SheetTrigger asChild>{children}</SheetTrigger>
       <SheetContent side="right" className="w-[380px] p-4">
         <SheetHeader>
           <SheetTitle>Assign handlers</SheetTitle>
         </SheetHeader>
-        <div className="space-y-3 mt-4">
+        <div className="mt-4 space-y-3">
           <input
-            className="w-full border rounded px-3 py-2 text-sm"
+            className="w-full rounded border px-3 py-2 text-sm"
             placeholder="Search name or email"
             value={query}
             onChange={e => setQuery(e.target.value)}
           />
-          <div className="max-h-[50vh] overflow-auto border rounded">
+          <div className="max-h-[50vh] overflow-auto rounded border">
             {filtered.map(m => (
-              <label key={m.orgMemberId} className="flex items-center gap-2 px-3 py-2 border-b last:border-b-0">
-                <input type="checkbox" checked={selected.includes(m.orgMemberId)} onChange={() => toggle(m.orgMemberId)} />
+              <label
+                key={m.orgMemberId}
+                className="flex items-center gap-2 border-b px-3 py-2 last:border-b-0"
+              >
+                <input
+                  type="checkbox"
+                  checked={selected.includes(m.orgMemberId)}
+                  onChange={() => toggle(m.orgMemberId)}
+                />
                 <div>
                   <div className="text-sm font-medium">{m.name || m.email}</div>
-                  <div className="text-xs text-muted-foreground">{m.email}</div>
+                  <div className="text-muted-foreground text-xs">{m.email}</div>
                 </div>
               </label>
             ))}
             {filtered.length === 0 && (
-              <div className="text-sm text-muted-foreground p-3">No matches</div>
+              <div className="text-muted-foreground p-3 text-sm">
+                No matches
+              </div>
             )}
           </div>
           <div className="flex gap-2">
-            <Button className="w-full" disabled={loading || selected.length === 0} onClick={confirm}>Confirm</Button>
-            <Button className="w-full" variant="secondary" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button
+              className="w-full"
+              disabled={loading || selected.length === 0}
+              onClick={confirm}
+            >
+              Confirm
+            </Button>
+            <Button
+              className="w-full"
+              variant="secondary"
+              onClick={() => setOpen(false)}
+            >
+              Cancel
+            </Button>
           </div>
         </div>
       </SheetContent>
     </Sheet>
   )
 }
-
-

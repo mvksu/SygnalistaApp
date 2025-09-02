@@ -2,15 +2,11 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react"
 import type { SelectReport } from "@/db/schema/reports"
-import { Avatar } from "@/components/ui/avatar"
-import { AvatarFallback } from "@radix-ui/react-avatar"
+import Assignees from "@/components/assignees"
 import { Button } from "@/components/ui/button"
 import { UserPlus } from "lucide-react"
 
-type ReportStatus =
-  | "NEW"
-  | "OPEN"
-  | "CLOSED"
+type ReportStatus = "NEW" | "OPEN" | "CLOSED"
 
 function toLocal(d: Date | string | null | undefined) {
   if (!d) return "—"
@@ -170,11 +166,11 @@ export default function InfoPanel({
           : []),
         {
           label: "Assignees",
-          value: assignees.map(a => initials(a)).join(", ")
+          value: ""
         },
         { label: "Organization name", value: orgName || "—" },
         { label: "Due date", value: toLocal(report.feedbackDueAt) || "—" },
-        { label: "Reporter", value: report.reporterMode || "—" },
+        { label: "Reporter", value: report.reporterMode || "—" }
       ] as Array<{ label: string; value: string }>,
     [
       status,
@@ -220,14 +216,6 @@ export default function InfoPanel({
       </div>
     )
   }
-  function initials(name?: string | null) {
-    if (!name) return "?"
-    const parts = name.trim().split(/\s+/)
-    const a = parts[0]?.[0] || ""
-    const b = parts.length > 1 ? parts[parts.length - 1][0] : ""
-    return (a + b).toUpperCase()
-  }
-
   return (
     <div className="space-y-4">
       <div>
@@ -248,31 +236,16 @@ export default function InfoPanel({
                   <option value="CLOSED">Closed</option>
                 </select>
               ) : i.label === "Assignees" ? (
-                <div className="flex items-center gap-2">
-                  <div>{assignees.length ? `${assignees.length}` : "—"}</div>
-                  <div>
-                    <div className="flex -space-x-2">
-                      {assignees.map((a, idx) => (
-                        <Avatar
-                          key={a}
-                          className="h-6 w-6 border-2 border-white bg-amber-100 text-xs"
-                          style={{ zIndex: assignees.length - idx }}
-                        >
-                          <AvatarFallback>{i.value}</AvatarFallback>
-                        </Avatar>
-                      ))}
-                    </div>
-                  </div>
+                <Assignees assignees={assignees.map(a => ({ name: a }))}>
                   <Button
-                    className="h-6 w-6 text-xs"
-                    title="Assign member"
-                    onClick={() => setShowPicker(true)}
-                    variant="outline"
+                    variant="secondary"
                     size="icon"
+                    className="bg-secondary text-muted-foreground ring-background hover:bg-secondary hover:text-foreground flex size-10 items-center justify-center rounded-full text-xs ring-2"
+                    onClick={() => setShowPicker(true)}
                   >
                     <UserPlus className="h-4 w-4" />
                   </Button>
-                </div>
+                </Assignees>
               ) : (
                 <div>{i.value}</div>
               )}
@@ -290,7 +263,7 @@ export default function InfoPanel({
             <div className="mb-2 flex items-center justify-between">
               <div className="text-base font-semibold">Assign member</div>
               <Button
-                className="text-sm text-muted-foreground"
+                className="text-muted-foreground text-sm"
                 onClick={() => setShowPicker(false)}
                 variant="link"
                 size="sm"
@@ -308,7 +281,7 @@ export default function InfoPanel({
               {filtered.map(m => (
                 <Button
                   key={m.orgMemberId}
-                  className="flex w-full items-center justify-between px-2 py-2 text-left hover:bg-muted/50"
+                  className="hover:bg-muted/50 flex w-full items-center justify-between px-2 py-2 text-left"
                   onClick={() => assign(m.orgMemberId)}
                   variant="ghost"
                   size="sm"
