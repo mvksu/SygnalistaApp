@@ -150,6 +150,21 @@ export default async function CaseViewPage({
     .limit(1)
   const lastReporterView = lastView?.viewedAt ?? null
 
+  // Get the last activity from reportLogs
+  const [lastActivity] = await db
+    .select({
+      lastActivity: reportLogs.createdAt,
+      lastActivityType: reportLogs.type
+    })
+    .from(reportLogs)
+    .where(eq(reportLogs.reportId, report.id))
+    .orderBy(desc(reportLogs.createdAt))
+    .limit(1)
+  const lastActivityData = lastActivity ? {
+    lastActivity: lastActivity.lastActivity as Date,
+    lastActivityType: lastActivity.lastActivityType
+  } : null
+
   // Decrypt reporter contact if provided
   let reporterContact: { email?: string; phone?: string } | null = null
   try {
@@ -202,6 +217,7 @@ export default async function CaseViewPage({
                 orgName={orgName}
                 lastViewedByReporter={lastReporterView}
                 reporterContact={reporterContact || undefined}
+                lastActivity={lastActivityData}
               />
             </CardContent>
           </Card>

@@ -18,16 +18,65 @@ function toLocal(d: Date | string | null | undefined) {
   return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString()
 }
 
+function formatLastActivity(lastActivity: Date, lastActivityType: string): string {
+  const now = new Date()
+  const diffMs = now.getTime() - lastActivity.getTime()
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+  
+  let timeAgo = ""
+  if (diffDays === 0) {
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+    if (diffHours === 0) {
+      const diffMinutes = Math.floor(diffMs / (1000 * 60))
+      timeAgo = diffMinutes <= 1 ? "just now" : `${diffMinutes}m ago`
+    } else {
+      timeAgo = `${diffHours}h ago`
+    }
+  } else if (diffDays === 1) {
+    timeAgo = "yesterday"
+  } else if (diffDays < 7) {
+    timeAgo = `${diffDays}d ago`
+  } else {
+    timeAgo = lastActivity.toLocaleDateString()
+  }
+  
+  const activityLabel = getActivityLabel(lastActivityType)
+  return `${timeAgo} (${activityLabel})`
+}
+
+function getActivityLabel(activityType: string): string {
+  switch (activityType) {
+    case "status_changed":
+      return "Status changed"
+    case "assignment_added":
+      return "Assigned"
+    case "assignment_removed":
+      return "Unassigned"
+    case "comment":
+      return "Comment added"
+    case "internal_comment":
+      return "Internal note"
+    case "created":
+      return "Created"
+    case "updated":
+      return "Updated"
+    default:
+      return activityType.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase())
+  }
+}
+
 export default function InfoPanel({
   report,
   orgName,
   lastViewedByReporter,
-  reporterContact
+  reporterContact,
+  lastActivity
 }: {
   report: SelectReport
   orgName: string
   lastViewedByReporter: Date | string | null
   reporterContact?: { email?: string; phone?: string }
+  lastActivity?: { lastActivity: Date; lastActivityType: string } | null
 }) {
   // 2) Local state for optimistic UI (fall back to a valid default if status is missing)
   const initialStatus = (report.status as ReportStatus | undefined) ?? "NEW"
@@ -105,7 +154,9 @@ export default function InfoPanel({
         { label: "Submitted", value: toLocal(report.createdAt as any) },
         {
           label: "Last update",
-          value: toLocal((report as any).acknowledgedAt)
+          value: lastActivity 
+            ? formatLastActivity(lastActivity.lastActivity, lastActivity.lastActivityType)
+            : toLocal(report.createdAt as any)
         },
         {
           label: "Last reporter view",
@@ -128,7 +179,7 @@ export default function InfoPanel({
     [
       status,
       report.createdAt,
-      (report as any).acknowledgedAt,
+      lastActivity,
       lastViewedByReporter,
       orgName,
       assignees,

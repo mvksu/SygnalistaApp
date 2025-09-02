@@ -53,8 +53,8 @@ export default function Chat({
   const timerRef = useRef<number | null>(null)
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView()
-  }, [])
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || [])
@@ -148,22 +148,23 @@ export default function Chat({
     }
   }
 
-  return (
-    <ScrollArea className="bg-background w-full flex-1 shadow-md min-[1024px]:rounded-e-3xl md:rounded-s-[inherit] [&>div>div]:h-full">
+    return (
+    <div className="bg-background w-full flex-1 shadow-md min-[1024px]:rounded-e-3xl md:rounded-s-[inherit] flex flex-col h-[600px]">
       <div className="flex h-full w-full flex-col px-4 md:px-6 lg:px-8">
-        {/* Chat */}
-        <div className="relative grow">
-          <div className="mt-6 space-y-6">
-            <div className="my-8 text-center">
-              <div className="text-foreground/80 inline-flex items-center rounded-full border border-black/[0.08] bg-white px-3 py-1 text-xs font-medium shadow-xs">
-                <Sparkles
-                  className="text-muted-foreground/70 -ms-1 me-1.5"
-                  size={14}
-                  aria-hidden="true"
-                />
-                Today
+        {/* Chat Messages - Fixed height and scrollable */}
+        <div className="flex-1 overflow-hidden min-h-0">
+          <ScrollArea className="h-full">
+            <div className="mt-6 space-y-6 pb-4">
+              <div className="my-8 text-center">
+                <div className="text-foreground/80 inline-flex items-center rounded-full border border-black/[0.08] bg-white px-3 py-1 text-xs font-medium shadow-xs">
+                  <Sparkles
+                    className="text-muted-foreground/70 -ms-1 me-1.5"
+                    size={14}
+                    aria-hidden="true"
+                  />
+                  Today
+                </div>
               </div>
-            </div>
             {[...messages].map(m => (
               <>
                 {m.body && m.audioUrl ? (
@@ -275,9 +276,10 @@ export default function Chat({
             ))}
             <div ref={messagesEndRef} aria-hidden="true" />
           </div>
-        </div>
-        {/* Footer */}
-        <div className="sticky bottom-0 z-50 pt-4 md:pt-8">
+        </ScrollArea>
+      </div>
+      {/* Footer */}
+      <div className="sticky bottom-0 z-50 pt-4 md:pt-8">
           <div className="bg-background rounded-[20px] pb-4 md:pb-8">
             <div className="bg-muted focus-within:bg-muted/50 focus-within:border-input relative rounded-[20px] border border-transparent transition-colors">
               <textarea
@@ -454,6 +456,6 @@ export default function Chat({
           </div>
         </div>
       </div>
-    </ScrollArea>
+    </div>
   )
 }
